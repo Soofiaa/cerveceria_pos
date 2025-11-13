@@ -2,7 +2,12 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cerveceria.db")
+# === Carpeta del usuario donde se guardarán los datos ===
+USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "CerveceriaPOS")
+os.makedirs(USER_DATA_DIR, exist_ok=True)
+
+# Ruta absoluta a la base de datos:
+DB_PATH = os.path.join(USER_DATA_DIR, "cerveceria.db")
 
 DDL = """
 PRAGMA foreign_keys=ON;
