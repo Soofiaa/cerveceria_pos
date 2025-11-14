@@ -46,22 +46,35 @@ class ReportsView(QWidget):
     def __init__(self):
         super().__init__()
 
-        # --- Filtros de fechas ---
-        self.in_from = QDateEdit(QDate.currentDate()); self.in_from.setCalendarPopup(True)
-        self.in_to   = QDateEdit(QDate.currentDate()); self.in_to.setCalendarPopup(True)
+        # Estilo local: fuente un poco más grande
+        self.setStyleSheet("""
+        QWidget {
+            font-size: 11pt;
+        }
+        QLineEdit, QDateEdit, QPushButton {
+            font-size: 11pt;
+        }
+        QHeaderView::section {
+            font-size: 10pt;
+        }
+        """)
 
-        self.btn_today      = QPushButton("Hoy")
-        self.btn_week       = QPushButton("Semana actual")
-        self.btn_month      = QPushButton("Mes actual")
-        self.btn_prev_month = QPushButton("Mes anterior")
-        self.btn_year       = QPushButton("Año actual")
-        self.btn_run        = QPushButton("Buscar")
-        self.btn_export     = QPushButton("Exportar CSV")
+        # --- Filtros de fechas ---
+        self.in_from = QDateEdit(QDate.currentDate())
+        self.in_from.setCalendarPopup(True)
+        self.in_to = QDateEdit(QDate.currentDate())
+        self.in_to.setCalendarPopup(True)
+
+        self.btn_today  = QPushButton("Hoy")
+        self.btn_week   = QPushButton("Semana actual")
+        self.btn_month  = QPushButton("Mes actual")
+        self.btn_year   = QPushButton("Año actual")
+        self.btn_run    = QPushButton("Buscar")
+        self.btn_export = QPushButton("Exportar CSV")
 
         self.btn_today.clicked.connect(self._set_today)
         self.btn_week.clicked.connect(self._set_week_current)
         self.btn_month.clicked.connect(self._set_month_current)
-        self.btn_prev_month.clicked.connect(self._set_month_previous)
         self.btn_year.clicked.connect(self._set_year_current)
         self.btn_run.clicked.connect(self.load_data)
         self.btn_export.clicked.connect(self.export_csv)
@@ -77,7 +90,6 @@ class ReportsView(QWidget):
         top.addWidget(self.btn_today)
         top.addWidget(self.btn_week)
         top.addWidget(self.btn_month)
-        top.addWidget(self.btn_prev_month)
         top.addWidget(self.btn_year)
         top.addSpacing(20)
         top.addWidget(self.btn_export)
@@ -86,17 +98,17 @@ class ReportsView(QWidget):
         box = QGroupBox("Resumen")
         grid = QGridLayout()
 
-        self.lbl_total       = QLabel("$0"); self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_profit      = QLabel("$0"); self.lbl_profit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_count       = QLabel("0");  self.lbl_count.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_avg         = QLabel("$0"); self.lbl_avg.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_avg_margin  = QLabel("0,0 %"); self.lbl_avg_margin.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_total      = QLabel("$0");      self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_profit     = QLabel("$0");      self.lbl_profit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_count      = QLabel("0");       self.lbl_count.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_avg        = QLabel("$0");      self.lbl_avg.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_avg_margin = QLabel("0,0 %");   self.lbl_avg_margin.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        grid.addWidget(QLabel("Total vendido:"),             0, 0); grid.addWidget(self.lbl_total,      0, 1)
-        grid.addWidget(QLabel("Ganancia total:"),            1, 0); grid.addWidget(self.lbl_profit,     1, 1)
-        grid.addWidget(QLabel("N° ventas:"),                 2, 0); grid.addWidget(self.lbl_count,      2, 1)
-        grid.addWidget(QLabel("Venta promedio:"),            3, 0); grid.addWidget(self.lbl_avg,        3, 1)
-        grid.addWidget(QLabel("Margen utilidad promedio:"),  4, 0); grid.addWidget(self.lbl_avg_margin, 4, 1)
+        grid.addWidget(QLabel("Total vendido:"),            0, 0); grid.addWidget(self.lbl_total,      0, 1)
+        grid.addWidget(QLabel("Ganancia total:"),           1, 0); grid.addWidget(self.lbl_profit,     1, 1)
+        grid.addWidget(QLabel("N° ventas:"),                2, 0); grid.addWidget(self.lbl_count,      2, 1)
+        grid.addWidget(QLabel("Venta promedio:"),           3, 0); grid.addWidget(self.lbl_avg,        3, 1)
+        grid.addWidget(QLabel("Margen utilidad promedio:"), 4, 0); grid.addWidget(self.lbl_avg_margin, 4, 1)
 
         box.setLayout(grid)
 
@@ -106,6 +118,9 @@ class ReportsView(QWidget):
         self.tbl_top.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tbl_top.setEditTriggers(QTableWidget.NoEditTriggers)
 
+        # Filas más altas para que sea fácil seleccionar
+        self.tbl_top.verticalHeader().setDefaultSectionSize(32)
+
         # --- Layout principal ---
         layout = QVBoxLayout(self)
         layout.addLayout(top)
@@ -113,8 +128,23 @@ class ReportsView(QWidget):
         layout.addWidget(QLabel("Top productos"))
         layout.addWidget(self.tbl_top)
 
+        # Ajustes de tamaño más cómodos
+        self._tune_sizes()
+
         # Carga inicial
         self._set_today()
+
+    def _tune_sizes(self):
+        """Ajusta alturas de controles para ser más amigables."""
+        # DateEdits y botones superiores
+        self.in_from.setMinimumHeight(30)
+        self.in_to.setMinimumHeight(30)
+
+        for btn in [
+            self.btn_today, self.btn_week, self.btn_month,
+            self.btn_year, self.btn_run, self.btn_export
+        ]:
+            btn.setMinimumHeight(34)
 
     # --- Rangos rápidos ---
     def _set_today(self):
@@ -135,27 +165,6 @@ class ReportsView(QWidget):
     def _set_month_current(self):
         to = QDate.currentDate()
         fr = QDate(to.year(), to.month(), 1)
-        self.in_from.setDate(fr)
-        self.in_to.setDate(to)
-        self.load_data()
-
-    def _set_month_previous(self):
-        """Mes anterior completo."""
-        today = QDate.currentDate()
-        year = today.year()
-        month = today.month()
-
-        if month == 1:
-            prev_year = year - 1
-            prev_month = 12
-        else:
-            prev_year = year
-            prev_month = month - 1
-
-        fr = QDate(prev_year, prev_month, 1)
-        last_day = fr.daysInMonth()
-        to = QDate(prev_year, prev_month, last_day)
-
         self.in_from.setDate(fr)
         self.in_to.setDate(to)
         self.load_data()
@@ -195,13 +204,19 @@ class ReportsView(QWidget):
         for tp in tops:
             i = self.tbl_top.rowCount()
             self.tbl_top.insertRow(i)
-            self.tbl_top.setItem(i, 0, QTableWidgetItem(tp["name"]))
-            self.tbl_top.setItem(i, 1, QTableWidgetItem(str(tp["qty"])))
+
+            name_item = QTableWidgetItem(tp["name"])
+            qty_item = QTableWidgetItem(str(tp["qty"]))
             rv = QTableWidgetItem(fmt_money(tp["revenue"]))
+
+            qty_item.setTextAlignment(Qt.AlignCenter)
             rv.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            self.tbl_top.setItem(i, 0, name_item)
+            self.tbl_top.setItem(i, 1, qty_item)
             self.tbl_top.setItem(i, 2, rv)
 
-        # --- Exportar CSV (solo resumen) ---
+    # --- Exportar CSV (solo resumen) ---
     def export_csv(self):
         path, _ = QFileDialog.getSaveFileName(
             self,

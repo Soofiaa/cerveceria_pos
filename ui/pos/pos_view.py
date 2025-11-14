@@ -1,5 +1,6 @@
 # ui/pos/pos_view.py
-from PySide6.QtCore import Qt, QStringListModel, QTimer
+from PySide6.QtCore import Qt, QStringListModel, QTimer, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QListWidget,
@@ -13,6 +14,7 @@ from core import sales_service as ss
 from ui.charge_dialog import ChargeDialog
 from ui.common_product_dialog import CommonProductDialog
 from core.utils_format import fmt_money
+
 
 # --- Delegate: cantidades editables en tabla ---
 class IntSpinDelegate(QStyledItemDelegate):
@@ -40,15 +42,35 @@ class IntSpinDelegate(QStyledItemDelegate):
 
 
 class POSView(QWidget):
+    # Señal que se emitirá cuando se complete una venta
+    sale_completed = Signal()
+
     def __init__(self):
         super().__init__()
         self.current_ticket_id = None
         self._updating_table = False
+        
+         # Fuente un poco más grande para esta pantalla
+        self.setStyleSheet("""
+        QWidget {
+            font-size: 11pt;
+        }
+        QLineEdit {
+            font-size: 11pt;
+        }
+        QPushButton {
+            font-size: 11pt;
+        }
+        QHeaderView::section {
+            font-size: 10pt;
+        }
+        """)
 
-        # === Panel izquierdo: Tickets ===
+        # === Panel izquierdo: Tickets abiertos ===
         self.list_tickets = QListWidget()
         self.btn_new = QPushButton("Nuevo")
         self.btn_delete = QPushButton("Eliminar")
+
         self.btn_new.clicked.connect(self.new_ticket)
         self.btn_delete.clicked.connect(self.delete_ticket)
         self.list_tickets.itemSelectionChanged.connect(self.on_ticket_selected)
@@ -56,42 +78,45 @@ class POSView(QWidget):
         left = QVBoxLayout()
         left.addWidget(QLabel("Tickets abiertos"))
         left.addWidget(self.list_tickets)
-        row = QHBoxLayout()
-        row.addWidget(self.btn_new)
-        row.addWidget(self.btn_delete)
-        left.addLayout(row)
+        row_left = QHBoxLayout()
+        row_left.addWidget(self.btn_new)
+        row_left.addWidget(self.btn_delete)
+        left.addLayout(row_left)
+
         left_widget = QWidget()
         left_widget.setLayout(left)
 
-        # === Panel derecho ===
+        # === Panel derecho: datos del ticket + ítems ===
         self.in_ticket_name = QLineEdit()
         self.in_ticket_name.setPlaceholderText("Nombre del ticket (opcional)")
+
+        self.btn_rename = QPushButton("Renombrar")
+        self.btn_rename.clicked.connect(self.rename_ticket)
 
         top_right = QHBoxLayout()
         top_right.addWidget(QLabel("Ticket:"))
         top_right.addWidget(self.in_ticket_name)
-        self.btn_rename = QPushButton("Renombrar")
-        self.btn_rename.clicked.connect(self.rename_ticket)
         top_right.addWidget(self.btn_rename)
 
-        # --- Búsqueda (auto-agrega) + Producto común ---
+        # --- Búsqueda + producto común ---
         self.in_search = QLineEdit()
         self.in_search.setPlaceholderText("Buscar producto o código (Enter para agregar)")
 
-        # Autocompletar (solo nombre; muestra coincidencias)
+        # Autocompletar
         self.suggest_model = QStringListModel(self)
         self.completer = QCompleter(self.suggest_model, self)
         self.completer.setCaseSensitivity(Qt.CaseInsensitive)
         self.completer.setFilterMode(Qt.MatchContains)
         self.completer.setCompletionMode(QCompleter.PopupCompletion)
         self.in_search.setCompleter(self.completer)
+
         self.suggest_map = {}
         self.selected_product_id = None
+
         self.in_search.textEdited.connect(self.update_suggestions)
         self.completer.activated.connect(self.on_suggestion_chosen)
-        self.in_search.returnPressed.connect(self.add_item_by_search)  # Enter agrega
+        self.in_search.returnPressed.connect(self.add_item_by_search)
 
-        # Botón de producto común (sub-ventana)
         self.btn_add_common = QPushButton("Agregar producto común")
         self.btn_add_common.clicked.connect(self.add_common_item_dialog)
 
@@ -106,13 +131,20 @@ class POSView(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setColumnWidth(4, 48)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed | QTableWidget.SelectedClicked)
-        self.table.setItemDelegateForColumn(1, IntSpinDelegate(self))  # Cant editable
+        self.table.setEditTriggers(
+            QTableWidget.DoubleClicked |
+            QTableWidget.EditKeyPressed |
+            QTableWidget.SelectedClicked
+        )
+        self.table.setItemDelegateForColumn(1, IntSpinDelegate(self))
         self.table.itemChanged.connect(self.on_table_item_changed)
 
-        # Acciones globales
+        # === Totales + botones inferiores ===
+        self.lbl_totals = QLabel("Total: $0")
+
         self.btn_clear = QPushButton("Limpiar ticket")
         self.btn_charge = QPushButton("COBRAR")
+
         self.btn_clear.clicked.connect(self.clear_ticket_items)
         self.btn_charge.clicked.connect(self.charge_ticket)
 
@@ -121,17 +153,17 @@ class POSView(QWidget):
         bottom.addStretch()
         bottom.addWidget(self.btn_charge)
 
-        self.lbl_totals = QLabel("Total: $0")
-
         right = QVBoxLayout()
         right.addLayout(top_right)
         right.addLayout(add_row)
         right.addWidget(self.table)
         right.addWidget(self.lbl_totals)
         right.addLayout(bottom)
+
         right_widget = QWidget()
         right_widget.setLayout(right)
 
+        # === Splitter principal ===
         splitter = QSplitter()
         splitter.addWidget(left_widget)
         splitter.addWidget(right_widget)
@@ -140,16 +172,61 @@ class POSView(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(splitter)
 
+        # --- Ajustes de tamaños cómodos ---
+        self.in_ticket_name.setMinimumHeight(32)
+        self.in_search.setMinimumHeight(32)
+        for btn in [
+            self.btn_new, self.btn_delete, self.btn_rename,
+            self.btn_add_common, self.btn_clear, self.btn_charge
+        ]:
+            btn.setMinimumHeight(32)
+
+        # --- Atajos de teclado ---
+        # F12 para cobrar
+        shortcut_charge = QShortcut(QKeySequence("F12"), self)
+        shortcut_charge.activated.connect(self.charge_ticket)
+        # Suprimir para eliminar la línea seleccionada
+        shortcut_del = QShortcut(QKeySequence("Delete"), self.table)
+        shortcut_del.activated.connect(self._delete_current_row)
+
         self.reload_tickets(initial=True)
+
+        # --- Tamaños cómodos para usuarios no técnicos ---
+        # Campos de texto más grandes
+        self.in_ticket_name.setMinimumHeight(34)
+        self.in_search.setMinimumHeight(34)
+
+        # Botones principales más grandes
+        for btn in [
+            self.btn_new, self.btn_delete,
+            self.btn_rename, self.btn_add_common,
+            self.btn_clear, self.btn_charge
+        ]:
+            btn.setMinimumHeight(38)
+
+        # Filas de tabla más altas
+        self.table.verticalHeader().setDefaultSectionSize(34)
+
+        # Foco inicial en la búsqueda
+        self.in_search.setFocus()
+
+        # Precarga silenciosa del "Producto común" para evitar demora la primera vez
+        QTimer.singleShot(0, self._warmup_common_product)
+
 
     # --- Utilidades ---
     def _ensure_common_product_id(self) -> int:
-        # Busca (o crea) "Producto común" (precio lo define el diálogo)
+        # Busca (o crea) "Producto común"
         candidates = ps.list_products("Producto común")
         for p in candidates:
             if (p["name"] or "").strip().lower() == "producto común":
                 return p["id"]
-        return ps.create_product(name="Producto común", sale_price=0, purchase_price=0, barcode=None)
+        return ps.create_product(
+            name="Producto común",
+            sale_price=0,
+            purchase_price=0,
+            barcode=None
+        )
 
     # === Autocompletar ===
     def update_suggestions(self, text: str):
@@ -200,20 +277,30 @@ class POSView(QWidget):
         ts.create_ticket(self.in_ticket_name.text().strip() or None)
         self.reload_tickets()
         self.list_tickets.setCurrentRow(0)
+        self.in_search.setFocus()
 
     def rename_ticket(self):
         if not self.current_ticket_id:
             return
-        ts.rename_ticket(self.current_ticket_id, self.in_ticket_name.text().strip() or None)
+        ts.rename_ticket(
+            self.current_ticket_id,
+            self.in_ticket_name.text().strip() or None
+        )
         self.reload_tickets()
+        self.in_search.setFocus()
 
     def delete_ticket(self):
         if not self.current_ticket_id:
             return
-        if QMessageBox.question(self, "Eliminar", "¿Eliminar este ticket sin cobrar?") != QMessageBox.Yes:
+        if QMessageBox.question(
+            self,
+            "Eliminar",
+            "¿Eliminar este ticket sin cobrar?"
+        ) != QMessageBox.Yes:
             return
         ts.delete_ticket(self.current_ticket_id)
         self.reload_tickets()
+        self.in_search.setFocus()
 
     # === Ítems ===
     def add_common_item_dialog(self):
@@ -234,12 +321,10 @@ class POSView(QWidget):
 
         self.load_ticket(self.current_ticket_id)
 
-        # --- LIMPIEZA COMPLETA DE LA CASILLA ---
+        # Limpiar completamente la casilla
         self.in_search.clear()
-        self.in_search.setText("")
         self.selected_product_id = None
         self.update_suggestions("")
-        self.completer.complete()
         self.in_search.setFocus()
 
     def add_item_by_search(self):
@@ -262,11 +347,11 @@ class POSView(QWidget):
         prod = ps.get_product(pid)
         ts.add_item(self.current_ticket_id, pid, qty=1, unit_price=prod["sale_price"])
 
-        # --- LIMPIEZA COMPLETA DE LA CASILLA ---
-        self.in_search.clear()          # queda sin texto
+        # Limpiar casilla
+        self.in_search.clear()
         self.selected_product_id = None
-        self.update_suggestions("")     # se borran sugerencias
-        self.in_search.setFocus()       # listo para el siguiente
+        self.update_suggestions("")
+        self.in_search.setFocus()
 
         self.load_ticket(self.current_ticket_id)
 
@@ -297,6 +382,7 @@ class POSView(QWidget):
     def _remove_line_direct(self, line_id: int):
         ts.remove_item(int(line_id))
         self.load_ticket(self.current_ticket_id)
+        self.in_search.setFocus()
 
     # === Carga y tabla ===
     def load_ticket(self, ticket_id: int):
@@ -340,6 +426,7 @@ class POSView(QWidget):
             self._updating_table = False
 
         self.refresh_totals()
+        self.in_search.setFocus()
 
     def clear_ticket_items(self):
         if not self.current_ticket_id:
@@ -347,6 +434,7 @@ class POSView(QWidget):
         for it in ts.list_items(self.current_ticket_id):
             ts.remove_item(it["id"])
         self.load_ticket(self.current_ticket_id)
+        self.in_search.setFocus()
 
     # === Edición de cantidad en línea ===
     def on_table_item_changed(self, item: QTableWidgetItem):
@@ -369,6 +457,7 @@ class POSView(QWidget):
             return
         ts.update_item_qty(line_id, new_qty)
         self.load_ticket(self.current_ticket_id)
+        self.in_search.setFocus()
 
     def refresh_totals(self):
         if not self.current_ticket_id:
@@ -398,6 +487,43 @@ class POSView(QWidget):
         ts.set_pay_method(self.current_ticket_id, pay_method)
         try:
             sid = ss.cobrar_ticket(self.current_ticket_id)
+            QMessageBox.information(
+                self,
+                "Venta",
+                f"Venta registrada (ID {sid}) — Pago: {pay_method}."
+            )
             self.reload_tickets()
+            self.sale_completed.emit()   # avisamos al main para refrescar reportes
+            self.in_search.setFocus()
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
+
+    def _warmup_common_product(self):
+        """Crea/busca el Producto común al inicio para evitar la espera en el primer uso."""
+        try:
+            self._ensure_common_product_id()
+        except Exception:
+            pass
+
+    def _delete_current_row(self):
+        """Elimina la línea actualmente seleccionada en la tabla (atajo Supr)."""
+        if not self.current_ticket_id:
+            return
+        row = self.table.currentRow()
+        if row < 0:
+            return
+        prod_cell = self.table.item(row, 0)
+        if not prod_cell:
+            return
+        line_id = prod_cell.data(Qt.UserRole)
+        if line_id is None:
+            return
+        ts.remove_item(int(line_id))
+        self.load_ticket(self.current_ticket_id)
+        self.in_search.setFocus()
+
+    def showEvent(self, event):
+        """Cuando se muestra la pestaña POS, devuelve el foco a Buscar producto."""
+        super().showEvent(event)
+        # Un pequeño delay para que Qt termine de dibujar y luego ponemos el foco
+        QTimer.singleShot(0, self.in_search.setFocus)

@@ -1,166 +1,129 @@
 # ui/charge_dialog.py
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QComboBox, QPushButton, QLineEdit, QMessageBox
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+    QPushButton, QLineEdit, QFormLayout, QWidget, QMessageBox
 )
+from PySide6.QtCore import Qt
+
+from core.utils_format import fmt_money
 
 
 class ChargeDialog(QDialog):
     """
-    Diálogo de cobro.
-
-    Al cerrarse con Aceptar, deja disponibles:
-        self.selected_method : str              -> "Efectivo", "Débito", etc.
-        self.cash_received   : int | None       -> monto recibido en entero (solo efectivo)
-        self.change          : int | None       -> vuelto en entero (solo efectivo)
-        self.reference       : str | None       -> número de referencia (otros medios)
+    Diálogo de cobro:
+    - Efectivo: monto recibido + cálculo automático de vuelto.
+    - Otros medios: campo de referencia opcional.
     """
     def __init__(self, total: int, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Cobrar")
-
-        self.total = total
         self.selected_method = None
         self.cash_received = None
         self.change = None
-        self.reference = None
+        self.ref_number = None
+
+        self.total = int(total or 0)
 
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel(f"Total a cobrar: {self._fmt_money(total)}"))
+        lay.addWidget(QLabel(f"Total a cobrar: {fmt_money(self.total)}"))
 
-        # --- Medio de pago ---
-        lay.addWidget(QLabel("Medio de pago:"))
+        # Medio de pago
         self.cmb = QComboBox()
-        # Mostrar con mayúscula inicial
         self.cmb.addItems(["Efectivo", "Débito", "Crédito", "Transferencia"])
+
+        lay.addWidget(QLabel("Medio de pago:"))
         lay.addWidget(self.cmb)
 
-        # --- Zona dinámica (efectivo / otros) ---
-        # Efectivo: monto recibido
-        self.lbl_paid = QLabel("Monto recibido:")
-        self.le_paid = QLineEdit()
-        self.le_paid.setPlaceholderText("Ej: 10.000")
+        # Área dinámica según medio de pago
+        self.panel = QWidget()
+        self.form = QFormLayout(self.panel)
 
-        # Vuelto dentro de un cuadro (solo lectura)
-        change_layout = QHBoxLayout()
-        self.lbl_change = QLabel("Vuelto:")
-        self.le_change = QLineEdit()
-        self.le_change.setReadOnly(True)
-        self.le_change.setText(self._fmt_money(0))
-        change_layout.addWidget(self.lbl_change)
-        change_layout.addWidget(self.le_change)
+        # Campos para efectivo
+        self.in_monto = QLineEdit()
+        self.in_monto.setPlaceholderText("Monto recibido")
+        self.in_monto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.in_monto.setMinimumHeight(32)
 
-        # Otros medios: referencia opcional
-        self.lbl_ref = QLabel("N° referencia (opcional):")
-        self.le_ref = QLineEdit()
+        self.lbl_vuelto = QLabel("$0")
+        self.lbl_vuelto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        lay.addWidget(self.lbl_paid)
-        lay.addWidget(self.le_paid)
-        lay.addLayout(change_layout)
-        lay.addWidget(self.lbl_ref)
-        lay.addWidget(self.le_ref)
+        # Campo para referencia (otros medios)
+        self.in_ref = QLineEdit()
+        self.in_ref.setPlaceholderText("Número de referencia (opcional)")
+        self.in_ref.setMinimumHeight(32)
+
+        lay.addWidget(self.panel)
 
         # Botones
         btns = QHBoxLayout()
         ok = QPushButton("Confirmar")
         cancel = QPushButton("Cancelar")
+        ok.setMinimumHeight(34)
+        cancel.setMinimumHeight(34)
         btns.addWidget(ok)
         btns.addWidget(cancel)
         lay.addLayout(btns)
 
-        # Señales
-        ok.clicked.connect(self._on_accept)
+        ok.clicked.connect(self.accept)
         cancel.clicked.connect(self.reject)
-        self.cmb.currentTextChanged.connect(self._update_fields)
-        self.le_paid.textChanged.connect(self._recalc_change)
 
-        # Estado inicial (Efectivo)
-        self._update_fields(self.cmb.currentText())
+        # Conexiones
+        self.cmb.currentTextChanged.connect(self._update_panel)
+        self.in_monto.textChanged.connect(self._recalc_change)
 
-    # ---------- Formato dinero ----------
-    def _fmt_money(self, value: int) -> str:
-        """
-        Formatea un entero como $1.000, $12.500, etc.
-        """
-        return "$" + f"{value:,}".replace(",", ".")
+        # Primera configuración
+        self._update_panel()
 
-    # ---------- Comportamiento dinámico ----------
-    def _update_fields(self, method: str):
-        """Muestra/oculta campos según el medio de pago."""
-        if method == "Efectivo":
-            # mostrar efectivo
-            self.lbl_paid.show()
-            self.le_paid.show()
-            self.lbl_change.show()
-            self.le_change.show()
+    def _update_panel(self):
+        """Cambia los campos mostrados según el medio de pago y pone foco correcto."""
+        # Limpiar formulario dinámico
+        while self.form.rowCount():
+            self.form.removeRow(0)
 
-            # ocultar referencia
-            self.lbl_ref.hide()
-            self.le_ref.hide()
+        method = (self.cmb.currentText() or "").lower()
 
-            self._recalc_change()
+        if method == "efectivo":
+            self.form.addRow("Monto recibido:", self.in_monto)
+            self.form.addRow("Vuelto:", self.lbl_vuelto)
+            # Dejar listo para escribir SIN clic
+            self.in_monto.setText("")
+            self.lbl_vuelto.setText("$0")
+            self.in_monto.setFocus()
         else:
-            # ocultar efectivo
-            self.lbl_paid.hide()
-            self.le_paid.hide()
-            self.lbl_change.hide()
-            self.le_change.hide()
-
-            # mostrar referencia
-            self.lbl_ref.show()
-            self.le_ref.show()
+            self.form.addRow("Referencia:", self.in_ref)
+            self.in_ref.setText("")
+            self.in_ref.setFocus()
 
     def _recalc_change(self):
-        """Recalcula el vuelto cuando es efectivo."""
-        if self.cmb.currentText() != "Efectivo":
+        """Recalcula el vuelto cuando cambia el monto recibido."""
+        txt = (self.in_monto.text() or "").replace(".", "").replace(",", "")
+        try:
+            val = int(txt)
+        except Exception:
+            self.lbl_vuelto.setText("$0")
             return
+        chg = max(0, val - self.total)
+        self.lbl_vuelto.setText(fmt_money(chg))
 
-        text = self.le_paid.text().strip()
-        if not text:
-            self.le_change.setText(self._fmt_money(0))
-            return
+    def accept(self):
+        method = (self.cmb.currentText() or "").lower()
 
-        # Permitir que el usuario escriba 10.000 o 10000
-        clean = text.replace(".", "")
-        if not clean.isdigit():
-            self.le_change.setText("Monto inválido")
-            return
-
-        paid = int(clean)
-        if paid < self.total:
-            self.le_change.setText("Monto insuficiente")
-        else:
-            self.le_change.setText(self._fmt_money(paid - self.total))
-
-    # ---------- Validación y salida ----------
-    def _on_accept(self):
-        method = self.cmb.currentText()
-
-        if method == "Efectivo":
-            text = self.le_paid.text().strip()
-            if not text:
-                QMessageBox.warning(self, "Error", "Ingrese el monto recibido.")
+        if method == "efectivo":
+            txt = (self.in_monto.text() or "").replace(".", "").replace(",", "")
+            try:
+                val = int(txt)
+            except Exception:
+                val = 0
+            if val < self.total:
+                QMessageBox.warning(self, "Cobrar", "El monto recibido es menor al total.")
                 return
-
-            clean = text.replace(".", "")
-            if not clean.isdigit():
-                QMessageBox.warning(self, "Error", "Monto recibido inválido.")
-                return
-
-            paid = int(clean)
-            if paid < self.total:
-                QMessageBox.warning(self, "Error", "El monto recibido es menor al total.")
-                return
-
-            self.cash_received = paid
-            self.change = paid - self.total
-            self.reference = None
-
+            self.cash_received = val
+            self.change = val - self.total
+            self.ref_number = None
         else:
             self.cash_received = None
             self.change = None
-            ref_text = self.le_ref.text().strip()
-            self.reference = ref_text if ref_text else None  # opcional
+            self.ref_number = (self.in_ref.text() or "").strip() or None
 
         self.selected_method = method
-        self.accept()
+        super().accept()

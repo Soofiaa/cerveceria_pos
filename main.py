@@ -1,12 +1,13 @@
 # main.py
 import sys
-import os, sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
+from PySide6.QtGui import QFont
 from core import db_manager
 from ui.pos.pos_view import POSView
 from ui.products_view import ProductsView
 from ui.reports_view import ReportsView
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -15,17 +16,63 @@ class MainWindow(QMainWindow):
         self.resize(1100, 700)
 
         tabs = QTabWidget()
-        tabs.addTab(POSView(), "POS")
-        tabs.addTab(ProductsView(), "Productos")
-        tabs.addTab(ReportsView(), "Reportes")
+
+        self.pos_view = POSView()
+        self.products_view = ProductsView()
+        self.reports_view = ReportsView()
+
+        tabs.addTab(self.pos_view, "POS")
+        tabs.addTab(self.products_view, "Productos")
+        tabs.addTab(self.reports_view, "Reportes")
 
         self.setCentralWidget(tabs)
+
+        # Al completar venta, refrescar reportes
+        self.pos_view.sale_completed.connect(self.reports_view.load_data)
 
 
 def main():
     db_manager.bootstrap()   # crea BD y tablas si no existen
 
     app = QApplication(sys.argv)
+
+    # --- Fuente general más grande ---
+    font = QFont()
+    font.setPointSize(11)      # sube si quieres más grande (12, 13…)
+    app.setFont(font)
+
+    # --- Estilos globales para inputs, botones y tablas ---
+    app.setStyleSheet("""
+    QWidget {
+        font-size: 11pt;
+    }
+
+    QLineEdit, QComboBox, QSpinBox {
+        min-height: 32px;
+        padding: 4px 8px;
+    }
+
+    QPushButton {
+        min-height: 34px;
+        padding: 6px 14px;
+        font-weight: 600;
+    }
+
+    QTableView::item, QTableWidget::item {
+        padding: 6px;
+    }
+
+    QHeaderView::section {
+        padding: 6px;
+    }
+
+    QTabBar::tab {
+        min-height: 30px;
+        padding: 6px 12px;
+        font-weight: 600;
+    }
+    """)
+
     win = MainWindow()
     win.show()
     sys.exit(app.exec())

@@ -49,6 +49,10 @@ class ProductDialog(QDialog):
         self.in_barcode = QLineEdit()
         self.in_barcode.setPlaceholderText("Opcional")
 
+        # Altura más cómoda en el diálogo
+        for le in [self.in_name, self.in_sale, self.in_purchase, self.in_barcode]:
+            le.setMinimumHeight(34)
+
         form.addRow("Nombre*", self.in_name)
         form.addRow("Precio venta*", self.in_sale)
         form.addRow("Precio compra", self.in_purchase)
@@ -62,6 +66,10 @@ class ProductDialog(QDialog):
         btns.addStretch()
         self.btn_save = QPushButton("Guardar")
         self.btn_cancel = QPushButton("Cancelar")
+
+        self.btn_save.setMinimumHeight(36)
+        self.btn_cancel.setMinimumHeight(36)
+
         btns.addWidget(self.btn_save)
         btns.addWidget(self.btn_cancel)
         layout.addLayout(btns)
@@ -121,6 +129,22 @@ class ProductsView(QWidget):
 
         main = QVBoxLayout(self)
 
+        # Fuente un poco más grande solo en esta pantalla
+        self.setStyleSheet("""
+        QWidget {
+            font-size: 11pt;
+        }
+        QLineEdit {
+            font-size: 11pt;
+        }
+        QPushButton {
+            font-size: 11pt;
+        }
+        QHeaderView::section {
+            font-size: 10pt;
+        }
+        """)
+
         # Instrucción clara
         hint = QLabel(
             "Usa \"Agregar producto\" para crear uno nuevo.\n"
@@ -147,6 +171,10 @@ class ProductsView(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        # Filas más altas para hacer clic más fácil
+        self.table.verticalHeader().setDefaultSectionSize(34)
+
         main.addWidget(self.table)
 
         # Doble clic = editar
@@ -185,6 +213,16 @@ class ProductsView(QWidget):
 
         main.addLayout(backup_row)
 
+        # --- Ajustes de tamaño para usuarios no técnicos ---
+        self.in_search.setMinimumHeight(34)
+        self.btn_search.setMinimumHeight(36)
+
+        self.btn_new.setMinimumHeight(36)
+        self.btn_delete.setMinimumHeight(36)
+        self.btn_export.setMinimumHeight(34)
+        self.btn_import.setMinimumHeight(34)
+
+        # Carga inicial
         self.reload()
         self._on_selection_changed()  # para desactivar Quitar al inicio
 
@@ -303,19 +341,43 @@ class ProductsView(QWidget):
         if confirm != QMessageBox.Yes:
             return
 
+        # Intento normal primero
         try:
             ps.delete_product(pid)
-        except ValueError as ve:
-            # Errores de negocio (producto con ventas, tickets abiertos, etc.)
-            QMessageBox.warning(self, "No se puede eliminar", str(ve))
+            self.reload()
             return
+        except ValueError as ve:
+            # Probablemente tiene ventas / tickets relacionados
+            resp = QMessageBox.question(
+                self,
+                "Producto con ventas",
+                (
+                    f"{ve}\n\n"
+                    "Este producto tiene ventas o tickets relacionados.\n"
+                    "Si continúas, se eliminarán las líneas de detalle "
+                    "asociadas a este producto en ventas y tickets.\n\n"
+                    "¿Deseas eliminarlo de todos modos?"
+                ),
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if resp != QMessageBox.Yes:
+                return
+            try:
+                ps.force_delete_product(pid)
+                self.reload()
+                return
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"No se pudo eliminar el producto incluso forzando:\n{e}"
+                )
+                return
         except Exception as e:
             # Errores técnicos inesperados
             QMessageBox.critical(self, "Error", f"No se pudo eliminar el producto:\n{e}")
             return
 
-        self.reload()
-        
     def export_products_csv(self):
         """Permite al usuario guardar la lista de productos en un CSV."""
         path, _ = QFileDialog.getSaveFileName(
