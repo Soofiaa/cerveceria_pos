@@ -199,12 +199,12 @@
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PyInstaller\\fake-modules\\_pyi_rth_utils\\__init__.py',
    'PYMODULE'),
-  ('stringprep', 'C:\\Python313\\Lib\\stringprep.py', 'PYMODULE'),
+  ('_colorize', 'C:\\Python313\\Lib\\_colorize.py', 'PYMODULE'),
   ('subprocess', 'C:\\Python313\\Lib\\subprocess.py', 'PYMODULE'),
   ('signal', 'C:\\Python313\\Lib\\signal.py', 'PYMODULE'),
-  ('tracemalloc', 'C:\\Python313\\Lib\\tracemalloc.py', 'PYMODULE'),
-  ('_colorize', 'C:\\Python313\\Lib\\_colorize.py', 'PYMODULE'),
   ('_py_abc', 'C:\\Python313\\Lib\\_py_abc.py', 'PYMODULE'),
+  ('stringprep', 'C:\\Python313\\Lib\\stringprep.py', 'PYMODULE'),
+  ('tracemalloc', 'C:\\Python313\\Lib\\tracemalloc.py', 'PYMODULE'),
   ('ui.reports_view',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\ui\\reports_view.py',
@@ -293,17 +293,21 @@
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\opengl32sw.dll',
    'BINARY'),
-  ('PySide6\\plugins\\networkinformation\\qnetworklistmanager.dll',
+  ('PySide6\\plugins\\tls\\qcertonlybackend.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\networkinformation\\qnetworklistmanager.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\tls\\qcertonlybackend.dll',
    'BINARY'),
   ('PySide6\\plugins\\tls\\qopensslbackend.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\tls\\qopensslbackend.dll',
    'BINARY'),
-  ('PySide6\\plugins\\tls\\qcertonlybackend.dll',
+  ('PySide6\\plugins\\tls\\qschannelbackend.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\tls\\qcertonlybackend.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\tls\\qschannelbackend.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\networkinformation\\qnetworklistmanager.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\networkinformation\\qnetworklistmanager.dll',
    'BINARY'),
   ('libcrypto-3-x64.dll',
    'C:\\Program Files\\Git\\mingw64\\bin\\libcrypto-3-x64.dll',
@@ -311,77 +315,73 @@
   ('libssl-3-x64.dll',
    'C:\\Program Files\\Git\\mingw64\\bin\\libssl-3-x64.dll',
    'BINARY'),
-  ('PySide6\\plugins\\tls\\qschannelbackend.dll',
+  ('PySide6\\plugins\\platforms\\qoffscreen.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\tls\\qschannelbackend.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qgif.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qgif.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qtga.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qtga.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qicns.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qicns.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforms\\qoffscreen.dll',
    'BINARY'),
   ('PySide6\\plugins\\platforms\\qminimal.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforms\\qminimal.dll',
    'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qsvg.dll',
+  ('PySide6\\plugins\\imageformats\\qtiff.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qsvg.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qpdf.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qpdf.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qjpeg.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qjpeg.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\platforms\\qoffscreen.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforms\\qoffscreen.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\iconengines\\qsvgicon.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\iconengines\\qsvgicon.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\generic\\qtuiotouchplugin.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\generic\\qtuiotouchplugin.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qico.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qico.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\platforms\\qwindows.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforms\\qwindows.dll',
-   'BINARY'),
-  ('PySide6\\plugins\\platforminputcontexts\\qtvirtualkeyboardplugin.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforminputcontexts\\qtvirtualkeyboardplugin.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qtiff.dll',
    'BINARY'),
   ('PySide6\\plugins\\imageformats\\qwebp.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qwebp.dll',
    'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qwbmp.dll',
+  ('PySide6\\plugins\\imageformats\\qsvg.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qwbmp.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qsvg.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\iconengines\\qsvgicon.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\iconengines\\qsvgicon.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qjpeg.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qjpeg.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qgif.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qgif.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\platforminputcontexts\\qtvirtualkeyboardplugin.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforminputcontexts\\qtvirtualkeyboardplugin.dll',
    'BINARY'),
   ('PySide6\\plugins\\platforms\\qdirect2d.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforms\\qdirect2d.dll',
    'BINARY'),
-  ('PySide6\\plugins\\imageformats\\qtiff.dll',
+  ('PySide6\\plugins\\generic\\qtuiotouchplugin.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qtiff.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\generic\\qtuiotouchplugin.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qpdf.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qpdf.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qwbmp.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qwbmp.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qico.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qico.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qicns.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qicns.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\imageformats\\qtga.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\imageformats\\qtga.dll',
+   'BINARY'),
+  ('PySide6\\plugins\\platforms\\qwindows.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\plugins\\platforms\\qwindows.dll',
    'BINARY'),
   ('PySide6\\plugins\\styles\\qmodernwindowsstyle.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
@@ -415,51 +415,51 @@
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\QtWidgets.pyd',
    'EXTENSION'),
-  ('VCRUNTIME140.dll', 'C:\\Python313\\VCRUNTIME140.dll', 'BINARY'),
-  ('api-ms-win-crt-math-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-math-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-crt-locale-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-locale-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-crt-heap-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-heap-l1-1-0.dll',
-   'BINARY'),
   ('api-ms-win-crt-process-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-process-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-crt-convert-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-convert-l1-1-0.dll',
+  ('api-ms-win-crt-stdio-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-stdio-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-crt-time-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-time-l1-1-0.dll',
    'BINARY'),
+  ('api-ms-win-crt-locale-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-locale-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-crt-string-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-string-l1-1-0.dll',
+   'BINARY'),
   ('api-ms-win-crt-conio-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-conio-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-crt-filesystem-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-filesystem-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-crt-convert-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-convert-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-crt-runtime-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-runtime-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-crt-environment-l1-1-0.dll',
    'C:\\Program '
    'Files\\Java\\jdk-24\\bin\\api-ms-win-crt-environment-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-crt-string-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-string-l1-1-0.dll',
+  ('VCRUNTIME140.dll', 'C:\\Python313\\VCRUNTIME140.dll', 'BINARY'),
+  ('api-ms-win-crt-math-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-math-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-crt-filesystem-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-filesystem-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-crt-stdio-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-stdio-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-crt-runtime-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-runtime-l1-1-0.dll',
-   'BINARY'),
-  ('shiboken6\\MSVCP140.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\shiboken6\\MSVCP140.dll',
+  ('api-ms-win-crt-heap-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-heap-l1-1-0.dll',
    'BINARY'),
   ('PySide6\\Qt6Network.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Network.dll',
+   'BINARY'),
+  ('shiboken6\\MSVCP140.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\shiboken6\\MSVCP140.dll',
    'BINARY'),
   ('VCRUNTIME140_1.dll', 'C:\\Python313\\VCRUNTIME140_1.dll', 'BINARY'),
   ('PySide6\\Qt6Core.dll',
@@ -470,34 +470,31 @@
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Gui.dll',
    'BINARY'),
+  ('api-ms-win-crt-utility-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-utility-l1-1-0.dll',
+   'BINARY'),
   ('PySide6\\Qt6Svg.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Svg.dll',
-   'BINARY'),
-  ('PySide6\\Qt6Pdf.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Pdf.dll',
    'BINARY'),
   ('PySide6\\Qt6VirtualKeyboard.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6VirtualKeyboard.dll',
    'BINARY'),
-  ('api-ms-win-crt-utility-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-crt-utility-l1-1-0.dll',
+  ('PySide6\\Qt6Pdf.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Pdf.dll',
    'BINARY'),
   ('PySide6\\Qt6Widgets.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Widgets.dll',
    'BINARY'),
   ('libcrypto-3.dll', 'C:\\Python313\\DLLs\\libcrypto-3.dll', 'BINARY'),
-  ('PySide6\\MSVCP140.dll',
+  ('PySide6\\VCRUNTIME140_1.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\MSVCP140.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\VCRUNTIME140_1.dll',
    'BINARY'),
-  ('PySide6\\pyside6.abi3.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\pyside6.abi3.dll',
-   'BINARY'),
+  ('python3.dll', 'C:\\Python313\\python3.dll', 'BINARY'),
   ('PySide6\\VCRUNTIME140.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\VCRUNTIME140.dll',
@@ -506,11 +503,14 @@
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\shiboken6\\shiboken6.abi3.dll',
    'BINARY'),
-  ('PySide6\\VCRUNTIME140_1.dll',
+  ('PySide6\\pyside6.abi3.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\VCRUNTIME140_1.dll',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\pyside6.abi3.dll',
    'BINARY'),
-  ('python3.dll', 'C:\\Python313\\python3.dll', 'BINARY'),
+  ('PySide6\\MSVCP140.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\MSVCP140.dll',
+   'BINARY'),
   ('shiboken6\\VCRUNTIME140.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\shiboken6\\VCRUNTIME140.dll',
@@ -534,26 +534,38 @@
   ('api-ms-win-core-synch-l1-2-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-synch-l1-2-0.dll',
    'BINARY'),
-  ('PySide6\\Qt6Quick.dll',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Quick.dll',
-   'BINARY'),
   ('PySide6\\Qt6Qml.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Qml.dll',
    'BINARY'),
+  ('PySide6\\Qt6Quick.dll',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\Qt6Quick.dll',
+   'BINARY'),
+  ('api-ms-win-core-debug-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-debug-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-file-l2-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-file-l2-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-handle-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-handle-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-fibers-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-fibers-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-memory-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-memory-l1-1-0.dll',
+   'BINARY'),
   ('api-ms-win-core-heap-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-heap-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-localization-l1-2-0.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-localization-l1-2-0.dll',
    'BINARY'),
   ('api-ms-win-core-synch-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-synch-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-file-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-file-l1-1-0.dll',
+  ('api-ms-win-core-interlocked-l1-1-0.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-interlocked-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-core-datetime-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-datetime-l1-1-0.dll',
@@ -562,68 +574,56 @@
    'C:\\Program '
    'Files\\Java\\jdk-24\\bin\\api-ms-win-core-libraryloader-l1-1-0.dll',
    'BINARY'),
+  ('api-ms-win-core-processenvironment-l1-1-0.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-processenvironment-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-string-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-string-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-localization-l1-2-0.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-localization-l1-2-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-file-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-file-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-errorhandling-l1-1-0.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-errorhandling-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-processthreads-l1-1-0.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-processthreads-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-rtlsupport-l1-1-0.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-rtlsupport-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-processthreads-l1-1-1.dll',
+   'C:\\Program '
+   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-processthreads-l1-1-1.dll',
+   'BINARY'),
+  ('api-ms-win-core-sysinfo-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-sysinfo-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-console-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-console-l1-1-0.dll',
+   'BINARY'),
   ('api-ms-win-core-namedpipe-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-namedpipe-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-core-util-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-util-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-memory-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-memory-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-interlocked-l1-1-0.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-interlocked-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-errorhandling-l1-1-0.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-errorhandling-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-processenvironment-l1-1-0.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-processenvironment-l1-1-0.dll',
+  ('api-ms-win-core-timezone-l1-1-0.dll',
+   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-timezone-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-core-file-l1-2-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-file-l1-2-0.dll',
    'BINARY'),
-  ('api-ms-win-core-processthreads-l1-1-0.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-processthreads-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-fibers-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-fibers-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-timezone-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-timezone-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-handle-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-handle-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-rtlsupport-l1-1-0.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-rtlsupport-l1-1-0.dll',
-   'BINARY'),
   ('api-ms-win-core-profile-l1-1-0.dll',
    'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-profile-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-processthreads-l1-1-1.dll',
-   'C:\\Program '
-   'Files\\Java\\jdk-24\\bin\\api-ms-win-core-processthreads-l1-1-1.dll',
-   'BINARY'),
-  ('api-ms-win-core-console-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-console-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-sysinfo-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-sysinfo-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-string-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-string-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-debug-l1-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-debug-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-file-l2-1-0.dll',
-   'C:\\Program Files\\Java\\jdk-24\\bin\\api-ms-win-core-file-l2-1-0.dll',
    'BINARY'),
   ('PySide6\\Qt6OpenGL.dll',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
@@ -643,25 +643,241 @@
    'BINARY')],
  [],
  [],
- [('PySide6\\translations\\qt_help_sk.qm',
+ [('PySide6\\translations\\qt_lt.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_sk.qm',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_lt.qm',
    'DATA'),
-  ('PySide6\\translations\\qt_bg.qm',
+  ('PySide6\\translations\\qt_nl.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_bg.qm',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_nl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_ka.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ka.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_uk.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_uk.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_hu.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_hu.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_lv.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_lv.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_ko.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ko.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_sk.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_sk.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_zh_TW.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_zh_TW.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_tr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_tr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_ja.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ja.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_bg.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_bg.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_fi.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_fi.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_pt_BR.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_pt_BR.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_pt_PT.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_pt_PT.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_ca.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ca.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_ru.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ru.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_ka.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ka.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_da.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_da.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_he.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_he.qm',
    'DATA'),
   ('PySide6\\translations\\qt_ja.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ja.qm',
    'DATA'),
+  ('PySide6\\translations\\qt_help_pl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_pl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_uk.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_uk.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_ru.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ru.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_cs.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_cs.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_hu.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_hu.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_sk.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_sk.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_en.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_en.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_nn.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_nn.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_he.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_he.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_bg.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_bg.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_ar.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ar.qm',
+   'DATA'),
   ('PySide6\\translations\\qt_zh_CN.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_zh_CN.qm',
    'DATA'),
-  ('PySide6\\translations\\qtbase_nn.qm',
+  ('PySide6\\translations\\qt_gl.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_nn.qm',
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_gl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_fa.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_fa.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_ja.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ja.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_gd.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_gd.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_nn.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_nn.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_pl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_pl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_it.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_it.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_nl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_nl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_es.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_es.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_tr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_tr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_sl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_sl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_lg.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_lg.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_uk.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_uk.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_hu.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_hu.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_hr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_hr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_es.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_es.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_da.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_da.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_ko.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ko.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_sv.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_sv.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_de.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_de.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_sv.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_sv.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_fa.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_fa.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_gd.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_gd.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_en.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_en.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_it.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_it.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_zh_TW.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_zh_TW.qm',
    'DATA'),
   ('PySide6\\translations\\qt_cs.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
@@ -671,377 +887,170 @@
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ca.qm',
    'DATA'),
-  ('PySide6\\translations\\qt_help_ja.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ja.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_nl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_nl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_it.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_it.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_sv.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_sv.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_de.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_de.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_ko.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ko.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_hu.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_hu.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_ar.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ar.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_bg.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_bg.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_ca.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ca.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_ru.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ru.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_uk.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_uk.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_fr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_fr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_sk.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_sk.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_zh_TW.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_zh_TW.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_gl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_gl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_ru.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ru.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_hr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_hr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_de.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_de.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_ar.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ar.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_lg.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_lg.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_hr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_hr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_ka.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_ka.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_pt_BR.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_pt_BR.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_da.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_da.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_fa.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_fa.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_it.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_it.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_pl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_pl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_lt.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_lt.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_pl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_pl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_ja.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ja.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_he.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_he.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_sv.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_sv.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_tr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_tr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_es.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_es.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_da.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_da.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_nn.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_nn.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_nn.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_nn.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_ar.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ar.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_zh_CN.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_zh_CN.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_zh_TW.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_zh_TW.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_hu.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_hu.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_ca.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ca.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_pt_BR.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_pt_BR.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_en.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_en.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_fi.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_fi.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_sv.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_sv.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_he.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_he.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_nl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_nl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_bg.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_bg.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_es.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_es.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_ko.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ko.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_sl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_sl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_en.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_en.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_lv.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_lv.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_zh_CN.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_zh_CN.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_hr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_hr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_sk.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_sk.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_fr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_fr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_gl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_gl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_lv.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_lv.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_pl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_pl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_cs.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_cs.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_fr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_fr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_ko.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ko.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_ka.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ka.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_da.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_da.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_gd.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_gd.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_fa.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_fa.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_lg.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_lg.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_hu.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_hu.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_ru.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ru.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_fi.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_fi.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_nl.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_nl.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_pt_PT.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_pt_PT.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_tr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_tr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_cs.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_cs.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_en.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_en.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_uk.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_uk.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_gd.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_gd.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_uk.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_uk.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_es.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_es.qm',
-   'DATA'),
   ('PySide6\\translations\\qtbase_de.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_de.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_tr.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_tr.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_zh_TW.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_zh_TW.qm',
-   'DATA'),
-  ('PySide6\\translations\\qt_help_pt_BR.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_pt_BR.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_it.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_it.qm',
-   'DATA'),
-  ('PySide6\\translations\\qtbase_ka.qm',
-   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
-   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ka.qm',
    'DATA'),
   ('PySide6\\translations\\qt_help_sl.qm',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_sl.qm',
    'DATA'),
+  ('PySide6\\translations\\qt_help_ka.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ka.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_zh_CN.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_zh_CN.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_ar.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ar.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_lv.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_lv.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_lg.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_lg.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_ko.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_ko.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_gl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_gl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_hr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_hr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_da.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_da.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_pt_BR.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_pt_BR.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_nl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_nl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_tr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_tr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_fr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_fr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_de.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_de.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_bg.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_bg.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_pt_BR.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_pt_BR.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_pl.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_pl.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_hr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_hr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_fi.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_fi.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_nn.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_nn.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_ca.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ca.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_ru.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ru.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_zh_CN.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_zh_CN.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_ar.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_ar.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_cs.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_cs.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_fr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_fr.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_sk.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_sk.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_it.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_it.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_en.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_en.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_sv.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_sv.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_es.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_es.qm',
+   'DATA'),
+  ('PySide6\\translations\\qt_help_zh_TW.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qt_help_zh_TW.qm',
+   'DATA'),
+  ('PySide6\\translations\\qtbase_fr.qm',
+   'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
+   'cervecería\\cerveceria_pos\\venv\\Lib\\site-packages\\PySide6\\translations\\qtbase_fr.qm',
+   'DATA'),
   ('base_library.zip',
    'C:\\Users\\sofia\\OneDrive\\Documentos\\Programa básico '
    'cervecería\\cerveceria_pos\\build\\CerveceriaPOS\\base_library.zip',
    'DATA')],
- [('stat', 'C:\\Python313\\Lib\\stat.py', 'PYMODULE'),
-  ('reprlib', 'C:\\Python313\\Lib\\reprlib.py', 'PYMODULE'),
-  ('_collections_abc', 'C:\\Python313\\Lib\\_collections_abc.py', 'PYMODULE'),
+ [('functools', 'C:\\Python313\\Lib\\functools.py', 'PYMODULE'),
   ('codecs', 'C:\\Python313\\Lib\\codecs.py', 'PYMODULE'),
-  ('operator', 'C:\\Python313\\Lib\\operator.py', 'PYMODULE'),
-  ('io', 'C:\\Python313\\Lib\\io.py', 'PYMODULE'),
-  ('_weakrefset', 'C:\\Python313\\Lib\\_weakrefset.py', 'PYMODULE'),
-  ('sre_parse', 'C:\\Python313\\Lib\\sre_parse.py', 'PYMODULE'),
-  ('linecache', 'C:\\Python313\\Lib\\linecache.py', 'PYMODULE'),
+  ('stat', 'C:\\Python313\\Lib\\stat.py', 'PYMODULE'),
+  ('locale', 'C:\\Python313\\Lib\\locale.py', 'PYMODULE'),
   ('sre_compile', 'C:\\Python313\\Lib\\sre_compile.py', 'PYMODULE'),
-  ('ntpath', 'C:\\Python313\\Lib\\ntpath.py', 'PYMODULE'),
+  ('copyreg', 'C:\\Python313\\Lib\\copyreg.py', 'PYMODULE'),
+  ('traceback', 'C:\\Python313\\Lib\\traceback.py', 'PYMODULE'),
+  ('sre_constants', 'C:\\Python313\\Lib\\sre_constants.py', 'PYMODULE'),
+  ('keyword', 'C:\\Python313\\Lib\\keyword.py', 'PYMODULE'),
+  ('os', 'C:\\Python313\\Lib\\os.py', 'PYMODULE'),
+  ('abc', 'C:\\Python313\\Lib\\abc.py', 'PYMODULE'),
+  ('posixpath', 'C:\\Python313\\Lib\\posixpath.py', 'PYMODULE'),
+  ('_weakrefset', 'C:\\Python313\\Lib\\_weakrefset.py', 'PYMODULE'),
+  ('operator', 'C:\\Python313\\Lib\\operator.py', 'PYMODULE'),
+  ('genericpath', 'C:\\Python313\\Lib\\genericpath.py', 'PYMODULE'),
+  ('heapq', 'C:\\Python313\\Lib\\heapq.py', 'PYMODULE'),
+  ('sre_parse', 'C:\\Python313\\Lib\\sre_parse.py', 'PYMODULE'),
+  ('types', 'C:\\Python313\\Lib\\types.py', 'PYMODULE'),
+  ('linecache', 'C:\\Python313\\Lib\\linecache.py', 'PYMODULE'),
+  ('weakref', 'C:\\Python313\\Lib\\weakref.py', 'PYMODULE'),
   ('encodings.zlib_codec',
    'C:\\Python313\\Lib\\encodings\\zlib_codec.py',
    'PYMODULE'),
@@ -1284,24 +1293,15 @@
    'C:\\Python313\\Lib\\encodings\\aliases.py',
    'PYMODULE'),
   ('encodings', 'C:\\Python313\\Lib\\encodings\\__init__.py', 'PYMODULE'),
-  ('enum', 'C:\\Python313\\Lib\\enum.py', 'PYMODULE'),
-  ('types', 'C:\\Python313\\Lib\\types.py', 'PYMODULE'),
-  ('genericpath', 'C:\\Python313\\Lib\\genericpath.py', 'PYMODULE'),
-  ('posixpath', 'C:\\Python313\\Lib\\posixpath.py', 'PYMODULE'),
-  ('locale', 'C:\\Python313\\Lib\\locale.py', 'PYMODULE'),
-  ('os', 'C:\\Python313\\Lib\\os.py', 'PYMODULE'),
-  ('weakref', 'C:\\Python313\\Lib\\weakref.py', 'PYMODULE'),
   ('re._parser', 'C:\\Python313\\Lib\\re\\_parser.py', 'PYMODULE'),
   ('re._constants', 'C:\\Python313\\Lib\\re\\_constants.py', 'PYMODULE'),
   ('re._compiler', 'C:\\Python313\\Lib\\re\\_compiler.py', 'PYMODULE'),
   ('re._casefix', 'C:\\Python313\\Lib\\re\\_casefix.py', 'PYMODULE'),
   ('re', 'C:\\Python313\\Lib\\re\\__init__.py', 'PYMODULE'),
-  ('collections', 'C:\\Python313\\Lib\\collections\\__init__.py', 'PYMODULE'),
+  ('enum', 'C:\\Python313\\Lib\\enum.py', 'PYMODULE'),
+  ('ntpath', 'C:\\Python313\\Lib\\ntpath.py', 'PYMODULE'),
   ('warnings', 'C:\\Python313\\Lib\\warnings.py', 'PYMODULE'),
-  ('keyword', 'C:\\Python313\\Lib\\keyword.py', 'PYMODULE'),
-  ('copyreg', 'C:\\Python313\\Lib\\copyreg.py', 'PYMODULE'),
-  ('heapq', 'C:\\Python313\\Lib\\heapq.py', 'PYMODULE'),
-  ('traceback', 'C:\\Python313\\Lib\\traceback.py', 'PYMODULE'),
-  ('sre_constants', 'C:\\Python313\\Lib\\sre_constants.py', 'PYMODULE'),
-  ('functools', 'C:\\Python313\\Lib\\functools.py', 'PYMODULE'),
-  ('abc', 'C:\\Python313\\Lib\\abc.py', 'PYMODULE')])
+  ('reprlib', 'C:\\Python313\\Lib\\reprlib.py', 'PYMODULE'),
+  ('_collections_abc', 'C:\\Python313\\Lib\\_collections_abc.py', 'PYMODULE'),
+  ('collections', 'C:\\Python313\\Lib\\collections\\__init__.py', 'PYMODULE'),
+  ('io', 'C:\\Python313\\Lib\\io.py', 'PYMODULE')])

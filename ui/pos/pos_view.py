@@ -1,6 +1,6 @@
 # ui/pos/pos_view.py
-from PySide6.QtCore import Qt, QStringListModel, QTimer, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import Qt, QStringListModel, QTimer, Signal, QEvent
+from PySide6.QtGui import QKeySequence, QShortcut, QBrush, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QListWidget,
@@ -49,8 +49,8 @@ class POSView(QWidget):
         super().__init__()
         self.current_ticket_id = None
         self._updating_table = False
-        
-         # Fuente un poco más grande para esta pantalla
+
+        # Fuente un poco más grande para esta pantalla
         self.setStyleSheet("""
         QWidget {
             font-size: 11pt;
@@ -138,12 +138,17 @@ class POSView(QWidget):
         )
         self.table.setItemDelegateForColumn(1, IntSpinDelegate(self))
         self.table.itemChanged.connect(self.on_table_item_changed)
+        self.table.cellClicked.connect(self._on_table_cell_clicked)
+        
+        # Permitir cambiar cantidad con flechas ↑/↓
+        self.table.installEventFilter(self)
+
 
         # === Totales + botones inferiores ===
         self.lbl_totals = QLabel("Total: $0")
 
         self.btn_clear = QPushButton("Limpiar ticket")
-        self.btn_charge = QPushButton("COBRAR")
+        self.btn_charge = QPushButton("F12 - COBRAR")
 
         self.btn_clear.clicked.connect(self.clear_ticket_items)
         self.btn_charge.clicked.connect(self.charge_ticket)
@@ -205,14 +210,14 @@ class POSView(QWidget):
             btn.setMinimumHeight(38)
 
         # Filas de tabla más altas
-        self.table.verticalHeader().setDefaultSectionSize(34)
+        self.table.verticalHeader().setDefaultSectionSize(44)
+        self.table.verticalHeader().setMinimumSectionSize(44)
 
         # Foco inicial en la búsqueda
         self.in_search.setFocus()
 
         # Precarga silenciosa del "Producto común" para evitar demora la primera vez
         QTimer.singleShot(0, self._warmup_common_product)
-
 
     # --- Utilidades ---
     def _ensure_common_product_id(self) -> int:
@@ -355,35 +360,6 @@ class POSView(QWidget):
 
         self.load_ticket(self.current_ticket_id)
 
-    # --- Botón ✕ por línea ---
-    def _make_remove_btn(self, line_id: int):
-        btn = QPushButton("✕")
-        btn.setFixedSize(32, 32)
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #d9534f;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #c9302c; }
-        """)
-        btn.clicked.connect(lambda: self._remove_line_direct(line_id))
-
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.addStretch()
-        layout.addWidget(btn)
-        layout.addStretch()
-        layout.setContentsMargins(0, 0, 0, 0)
-        return container
-
-    def _remove_line_direct(self, line_id: int):
-        ts.remove_item(int(line_id))
-        self.load_ticket(self.current_ticket_id)
-        self.in_search.setFocus()
-
     # === Carga y tabla ===
     def load_ticket(self, ticket_id: int):
         """Producto | Cant (editable) | P.Unit | Total | ✕"""
@@ -421,7 +397,13 @@ class POSView(QWidget):
                 tot_item.setFlags(tot_item.flags() & ~Qt.ItemIsEditable)
                 self.table.setItem(r, 3, tot_item)
 
-                self.table.setCellWidget(r, 4, self._make_remove_btn(it["id"]))
+                # Columna 4: "botón" de eliminar como celda roja con X
+                del_item = QTableWidgetItem("✕")
+                del_item.setTextAlignment(Qt.AlignCenter)
+                del_item.setFlags(del_item.flags() & ~Qt.ItemIsEditable)
+                del_item.setBackground(QBrush(QColor("#d9534f")))
+                del_item.setForeground(QBrush(QColor("white")))
+                self.table.setItem(r, 4, del_item)
         finally:
             self._updating_table = False
 
@@ -521,6 +503,58 @@ class POSView(QWidget):
         ts.remove_item(int(line_id))
         self.load_ticket(self.current_ticket_id)
         self.in_search.setFocus()
+        
+    def eventFilter(self, obj, event):
+        """Permite modificar cantidad con flechas ↑/↓ en la fila seleccionada."""
+        if obj is self.table and event.type() == QEvent.KeyPress:
+            if event.key() in (Qt.Key_Up, Qt.Key_Down):
+                row = self.table.currentRow()
+                if row < 0:
+                    return True
+                qty_item = self.table.item(row, 1)
+                if not qty_item:
+                    return True
+                try:
+                    val = int(qty_item.text())
+                except Exception:
+                    val = 1
+                # ↑ suma, ↓ resta
+                if event.key() == Qt.Key_Up:
+                    val += 1
+                else:
+                    val -= 1
+                if val <= 0:
+                    return True
+                qty_item.setText(str(val))  # dispara on_table_item_changed
+                return True
+        return super().eventFilter(obj, event)
+
+    def _on_table_cell_clicked(self, row: int, column: int):
+        """Si se hace clic en la X, elimina; en otras columnas, edita cantidad."""
+        # Columna 4 = X (eliminar línea)
+        if column == 4:
+            if not self.current_ticket_id:
+                return
+
+            prod_cell = self.table.item(row, 0)
+            if not prod_cell:
+                return
+
+            line_id = prod_cell.data(Qt.UserRole)
+            if line_id is None:
+                return
+
+            ts.remove_item(int(line_id))
+            self.load_ticket(self.current_ticket_id)
+            self.in_search.setFocus()
+            return
+
+        # Cualquier otra columna: enfocamos la cantidad y abrimos editor
+        qty_item = self.table.item(row, 1)
+        if qty_item:
+            self.table.setCurrentCell(row, 1)
+            self.table.editItem(qty_item)
+
 
     def showEvent(self, event):
         """Cuando se muestra la pestaña POS, devuelve el foco a Buscar producto."""

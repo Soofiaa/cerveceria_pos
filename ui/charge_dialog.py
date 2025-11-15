@@ -1,4 +1,3 @@
-# ui/charge_dialog.py
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QLineEdit, QFormLayout, QWidget, QMessageBox
@@ -38,19 +37,27 @@ class ChargeDialog(QDialog):
         self.panel = QWidget()
         self.form = QFormLayout(self.panel)
 
-        # Campos para efectivo
+        # ----- Campos para efectivo -----
+        self.lbl_monto = QLabel("Monto recibido:")
         self.in_monto = QLineEdit()
         self.in_monto.setPlaceholderText("Monto recibido")
         self.in_monto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.in_monto.setMinimumHeight(32)
 
+        self.lbl_vuelto_title = QLabel("Vuelto:")
         self.lbl_vuelto = QLabel("$0")
         self.lbl_vuelto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        # Campo para referencia (otros medios)
+        # ----- Campo para referencia (otros medios) -----
+        self.lbl_ref_title = QLabel("Referencia:")
         self.in_ref = QLineEdit()
         self.in_ref.setPlaceholderText("Número de referencia (opcional)")
         self.in_ref.setMinimumHeight(32)
+
+        # Agregamos TODAS las filas una sola vez
+        self.form.addRow(self.lbl_monto, self.in_monto)
+        self.form.addRow(self.lbl_vuelto_title, self.lbl_vuelto)
+        self.form.addRow(self.lbl_ref_title, self.in_ref)
 
         lay.addWidget(self.panel)
 
@@ -76,22 +83,36 @@ class ChargeDialog(QDialog):
 
     def _update_panel(self):
         """Cambia los campos mostrados según el medio de pago y pone foco correcto."""
-        # Limpiar formulario dinámico
-        while self.form.rowCount():
-            self.form.removeRow(0)
-
         method = (self.cmb.currentText() or "").lower()
 
+        # Ocultamos todo por defecto
+        for w in (
+            self.lbl_monto, self.in_monto,
+            self.lbl_vuelto_title, self.lbl_vuelto,
+            self.lbl_ref_title, self.in_ref
+        ):
+            w.hide()
+
         if method == "efectivo":
-            self.form.addRow("Monto recibido:", self.in_monto)
-            self.form.addRow("Vuelto:", self.lbl_vuelto)
-            # Dejar listo para escribir SIN clic
+            # Reset campos de efectivo
             self.in_monto.setText("")
             self.lbl_vuelto.setText("$0")
+
+            # Mostramos solo efectivo + vuelto
+            self.lbl_monto.show()
+            self.in_monto.show()
+            self.lbl_vuelto_title.show()
+            self.lbl_vuelto.show()
+
             self.in_monto.setFocus()
         else:
-            self.form.addRow("Referencia:", self.in_ref)
+            # Reset referencia
             self.in_ref.setText("")
+
+            # Mostramos solo referencia
+            self.lbl_ref_title.show()
+            self.in_ref.show()
+
             self.in_ref.setFocus()
 
     def _recalc_change(self):

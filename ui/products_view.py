@@ -173,7 +173,7 @@ class ProductsView(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
 
         # Filas más altas para hacer clic más fácil
-        self.table.verticalHeader().setDefaultSectionSize(34)
+        self.table.verticalHeader().setDefaultSectionSize(42)
 
         main.addWidget(self.table)
 
