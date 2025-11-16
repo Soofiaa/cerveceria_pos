@@ -268,6 +268,21 @@ class POSView(QWidget):
         if self.list_tickets.count() == 0:
             self.current_ticket_id = None
             self.clear_ticket_ui()
+            
+    def _refresh_tickets_sidebar(self):
+        """Recarga la lista de tickets manteniendo seleccionado el actual."""
+        current_id = self.current_ticket_id
+        self.reload_tickets(initial=False)
+        if current_id is None:
+            return
+
+        for i in range(self.list_tickets.count()):
+            it = self.list_tickets.item(i)
+            if it.data(Qt.UserRole) == current_id:
+                self.list_tickets.setCurrentRow(i)
+                break
+
+
 
     def on_ticket_selected(self):
         item = self.list_tickets.currentItem()
@@ -311,6 +326,7 @@ class POSView(QWidget):
     def add_common_item_dialog(self):
         if not self.current_ticket_id:
             self.new_ticket()
+
         dlg = CommonProductDialog(self)
         if dlg.exec() != QDialog.Accepted:
             return
@@ -324,13 +340,16 @@ class POSView(QWidget):
         pid = self._ensure_common_product_id()
         ts.add_item(self.current_ticket_id, pid, qty=qty, unit_price=unit_price)
 
+        # Recargar tabla del ticket y actualizar panel izquierdo
         self.load_ticket(self.current_ticket_id)
+        self._refresh_tickets_sidebar()
 
-        # Limpiar completamente la casilla
+        # Limpiar completamente la casilla de búsqueda
         self.in_search.clear()
         self.selected_product_id = None
         self.update_suggestions("")
         self.in_search.setFocus()
+
 
     def add_item_by_search(self):
         """Agrega producto por nombre/código: cantidad 1, precio del producto."""
@@ -352,13 +371,16 @@ class POSView(QWidget):
         prod = ps.get_product(pid)
         ts.add_item(self.current_ticket_id, pid, qty=1, unit_price=prod["sale_price"])
 
-        # Limpiar casilla
+        # Limpiar casilla de búsqueda y sugerencias
         self.in_search.clear()
         self.selected_product_id = None
         self.update_suggestions("")
         self.in_search.setFocus()
 
+        # Recargar tabla del ticket y actualizar panel izquierdo
         self.load_ticket(self.current_ticket_id)
+        self._refresh_tickets_sidebar()
+
 
     # === Carga y tabla ===
     def load_ticket(self, ticket_id: int):
@@ -420,15 +442,20 @@ class POSView(QWidget):
 
     # === Edición de cantidad en línea ===
     def on_table_item_changed(self, item: QTableWidgetItem):
+        """Se dispara cuando cambia una celda; solo nos importa la columna Cant (1)."""
         if self._updating_table or item.column() != 1:
             return
+
         row = item.row()
         prod_cell = self.table.item(row, 0)
         if not prod_cell:
             return
+
         line_id = prod_cell.data(Qt.UserRole)
         if line_id is None:
             return
+
+        # Validar nueva cantidad
         try:
             new_qty = int(item.text())
             if new_qty <= 0:
@@ -437,8 +464,10 @@ class POSView(QWidget):
             QMessageBox.warning(self, "Cantidad inválida", "Debe ser un número mayor que 0.")
             self.load_ticket(self.current_ticket_id)
             return
+
         ts.update_item_qty(line_id, new_qty)
         self.load_ticket(self.current_ticket_id)
+        self._refresh_tickets_sidebar()
         self.in_search.setFocus()
 
     def refresh_totals(self):
@@ -447,11 +476,34 @@ class POSView(QWidget):
             return
         _, _, tot = ts.calc_ticket_totals(self.current_ticket_id)
         self.lbl_totals.setText(f"Total: {fmt_money(tot)}")
-
+        
     def clear_ticket_ui(self):
+        """Limpia la UI del ticket cuando no hay ticket seleccionado."""
         self.in_ticket_name.clear()
         self.table.setRowCount(0)
         self.lbl_totals.setText("Total: $0")
+
+
+    def clear_ticket_items(self):
+        """Elimina todos los ítems del ticket actual."""
+        if not self.current_ticket_id:
+            return
+        for it in ts.list_items(self.current_ticket_id):
+            ts.remove_item(it["id"])
+
+        self.load_ticket(self.current_ticket_id)
+        self._refresh_tickets_sidebar()
+        self.in_search.setFocus()
+        
+    def _remove_line_direct(self, line_id: int):
+        """Elimina una línea específica (se usa por atajo u otras acciones directas)."""
+        if not self.current_ticket_id:
+            return
+
+        ts.remove_item(int(line_id))
+        self.load_ticket(self.current_ticket_id)
+        self._refresh_tickets_sidebar()
+        self.in_search.setFocus()
 
     # === Cobro ===
     def charge_ticket(self):
@@ -491,17 +543,22 @@ class POSView(QWidget):
         """Elimina la línea actualmente seleccionada en la tabla (atajo Supr)."""
         if not self.current_ticket_id:
             return
+
         row = self.table.currentRow()
         if row < 0:
             return
+
         prod_cell = self.table.item(row, 0)
         if not prod_cell:
             return
+
         line_id = prod_cell.data(Qt.UserRole)
         if line_id is None:
             return
+
         ts.remove_item(int(line_id))
         self.load_ticket(self.current_ticket_id)
+        self._refresh_tickets_sidebar()
         self.in_search.setFocus()
         
     def eventFilter(self, obj, event):
@@ -530,7 +587,7 @@ class POSView(QWidget):
         return super().eventFilter(obj, event)
 
     def _on_table_cell_clicked(self, row: int, column: int):
-        """Si se hace clic en la X, elimina; en otras columnas, edita cantidad."""
+        """Si se hace clic en la columna de la X, elimina la línea; si no, permite editar cantidad."""
         # Columna 4 = X (eliminar línea)
         if column == 4:
             if not self.current_ticket_id:
@@ -546,10 +603,11 @@ class POSView(QWidget):
 
             ts.remove_item(int(line_id))
             self.load_ticket(self.current_ticket_id)
+            self._refresh_tickets_sidebar()
             self.in_search.setFocus()
             return
 
-        # Cualquier otra columna: enfocamos la cantidad y abrimos editor
+        # Cualquier otra columna: enfocar la cantidad y abrir editor
         qty_item = self.table.item(row, 1)
         if qty_item:
             self.table.setCurrentCell(row, 1)
