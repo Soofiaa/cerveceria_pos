@@ -33,6 +33,8 @@ class ProductDialog(QDialog):
         self.setWindowTitle("Editar producto" if is_edit else "Nuevo producto")
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         group = QGroupBox("Datos del producto")
         form = QFormLayout()
@@ -127,7 +129,10 @@ class ProductsView(QWidget):
     def __init__(self):
         super().__init__()
 
-        main = QVBoxLayout(self)
+        # Layout principal
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         # Fuente un poco más grande solo en esta pantalla
         self.setStyleSheet("""
@@ -145,16 +150,24 @@ class ProductsView(QWidget):
         }
         """)
 
-        # Instrucción clara
+        # --- Título ---
+        title = QLabel("Productos")
+        title_font = title.font()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        layout.addWidget(title)
+
+        # --- Instrucción clara ---
         hint = QLabel(
             "Usa \"Agregar producto\" para crear uno nuevo.\n"
             "Haz doble clic en un producto para modificarlo.\n"
-            "Haz un clic en un producto y usa \"Quitar producto\" para eliminarlo"
+            "Haz un clic en un producto y usa \"Quitar producto\" para eliminarlo."
         )
-        hint.setStyleSheet("color: #AAAAAA; font-size: 11px;")
-        main.addWidget(hint)
+        hint.setStyleSheet("color: #888888; font-size: 12pt;")
+        layout.addWidget(hint)
 
-        # Búsqueda
+        # --- Búsqueda ---
         search_row = QHBoxLayout()
         self.in_search = QLineEdit()
         self.in_search.setPlaceholderText("Buscar por nombre o código de barras")
@@ -162,12 +175,17 @@ class ProductsView(QWidget):
         self.btn_search.clicked.connect(self.reload)
         search_row.addWidget(self.in_search)
         search_row.addWidget(self.btn_search)
-        main.addLayout(search_row)
+        layout.addLayout(search_row)
 
-        # Tabla
+        # --- Tabla de productos ---
         self.table = QTableWidget(0, 4)
+        self.table.setAlternatingRowColors(True)
         self.table.setHorizontalHeaderLabels(["Nombre", "Venta", "Compra", "Código"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setStretchLastSection(True)
+
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -175,7 +193,7 @@ class ProductsView(QWidget):
         # Filas más altas para hacer clic más fácil
         self.table.verticalHeader().setDefaultSectionSize(42)
 
-        main.addWidget(self.table)
+        layout.addWidget(self.table)
 
         # Doble clic = editar
         self.table.cellDoubleClicked.connect(self.edit_selected)
@@ -183,18 +201,18 @@ class ProductsView(QWidget):
         # Habilitar / deshabilitar botón Quitar según selección
         self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
-        # Botones inferiores
-        btns = QHBoxLayout()
+        # --- Botones inferiores (Agregar / Quitar) ---
+        buttons_row = QHBoxLayout()
         self.btn_new = QPushButton("Agregar producto")
         self.btn_delete = QPushButton("Quitar producto")
 
         self.btn_new.clicked.connect(self.new_product)
         self.btn_delete.clicked.connect(self.delete_selected)
 
-        btns.addWidget(self.btn_new)
-        btns.addWidget(self.btn_delete)
-        btns.addStretch()
-        main.addLayout(btns)
+        buttons_row.addWidget(self.btn_new)
+        buttons_row.addWidget(self.btn_delete)
+        buttons_row.addStretch()
+        layout.addLayout(buttons_row)
 
         # ------------------------------
         # Botones de respaldo CSV
@@ -211,7 +229,7 @@ class ProductsView(QWidget):
         backup_row.addWidget(self.btn_import)
         backup_row.addStretch()
 
-        main.addLayout(backup_row)
+        layout.addLayout(backup_row)
 
         # --- Ajustes de tamaño para usuarios no técnicos ---
         self.in_search.setMinimumHeight(34)
@@ -225,6 +243,7 @@ class ProductsView(QWidget):
         # Carga inicial
         self.reload()
         self._on_selection_changed()  # para desactivar Quitar al inicio
+
 
     # --------------------------------------------------
     # Utilidades internas

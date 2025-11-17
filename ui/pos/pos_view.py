@@ -49,21 +49,16 @@ class POSView(QWidget):
         super().__init__()
         self.current_ticket_id = None
         self._updating_table = False
+        self._preserve_table_focus = False
 
-        # Fuente un poco más grande para esta pantalla
         self.setStyleSheet("""
-        QWidget {
-            font-size: 11pt;
-        }
-        QLineEdit {
-            font-size: 11pt;
-        }
-        QPushButton {
-            font-size: 11pt;
-        }
-        QHeaderView::section {
-            font-size: 10pt;
-        }
+            QWidget {
+                font-size: 11pt;
+            }
+            QHeaderView::section {
+                font-size: 10pt;
+                font-weight: bold;
+            }
         """)
 
         # === Panel izquierdo: Tickets abiertos ===
@@ -131,6 +126,7 @@ class POSView(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setColumnWidth(4, 48)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(
             QTableWidget.DoubleClicked |
             QTableWidget.EditKeyPressed |
@@ -143,9 +139,21 @@ class POSView(QWidget):
         # Permitir cambiar cantidad con flechas ↑/↓
         self.table.installEventFilter(self)
 
-
         # === Totales + botones inferiores ===
         self.lbl_totals = QLabel("Total: $0")
+
+        # --- Estilo tipo 'card' para el total ---
+        font_total = self.lbl_totals.font()
+        font_total.setBold(True)
+        self.lbl_totals.setFont(font_total)
+
+        self.lbl_totals.setStyleSheet("""
+            padding: 14px 18px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        """)
+        self.lbl_totals.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        # ----------------------------------------
 
         self.btn_clear = QPushButton("Limpiar ticket")
         self.btn_charge = QPushButton("F12 - COBRAR")
@@ -159,6 +167,8 @@ class POSView(QWidget):
         bottom.addWidget(self.btn_charge)
 
         right = QVBoxLayout()
+        right.setContentsMargins(6, 6, 6, 6)
+        right.setSpacing(6)
         right.addLayout(top_right)
         right.addLayout(add_row)
         right.addWidget(self.table)
@@ -175,7 +185,10 @@ class POSView(QWidget):
         splitter.setSizes([250, 800])
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)  # margen interno
+        layout.setSpacing(8)                       # espacio entre elementos
         layout.addWidget(splitter)
+
 
         # --- Ajustes de tamaños cómodos ---
         self.in_ticket_name.setMinimumHeight(32)
@@ -193,6 +206,14 @@ class POSView(QWidget):
         # Suprimir para eliminar la línea seleccionada
         shortcut_del = QShortcut(QKeySequence("Delete"), self.table)
         shortcut_del.activated.connect(self._delete_current_row)
+        
+        # F2: ir a la tabla del ticket para navegar con ↑/↓ y usar +/-
+        shortcut_focus_table = QShortcut(QKeySequence("F2"), self)
+        shortcut_focus_table.activated.connect(self._focus_table)
+
+        # F3: volver rápido al buscador de productos
+        shortcut_focus_search = QShortcut(QKeySequence("F3"), self)
+        shortcut_focus_search.activated.connect(self._focus_search)
 
         self.reload_tickets(initial=True)
 
@@ -260,7 +281,7 @@ class POSView(QWidget):
         for t in ts.list_open_tickets():
             name = (t.get("name") or f"Ticket {t['id']}").strip()
             total = int(t.get("pending_total") or 0)
-            it = QListWidgetItem(f"{name} — {fmt_money(total)}")
+            it = QListWidgetItem(name)
             it.setData(Qt.UserRole, int(t["id"]))
             self.list_tickets.addItem(it)
         if self.list_tickets.count() and initial:
@@ -302,12 +323,19 @@ class POSView(QWidget):
     def rename_ticket(self):
         if not self.current_ticket_id:
             return
+
         ts.rename_ticket(
             self.current_ticket_id,
             self.in_ticket_name.text().strip() or None
         )
+
         self.reload_tickets()
+
+        # --- Limpiar la casilla del nombre del ticket ---
+        self.in_ticket_name.clear()
+
         self.in_search.setFocus()
+
 
     def delete_ticket(self):
         if not self.current_ticket_id:
@@ -391,7 +419,7 @@ class POSView(QWidget):
             self.clear_ticket_ui()
             return
 
-        self.in_ticket_name.setText((t.get("name") or "").strip())
+        self.in_ticket_name.clear()
 
         self._updating_table = True
         try:
@@ -419,18 +447,24 @@ class POSView(QWidget):
                 tot_item.setFlags(tot_item.flags() & ~Qt.ItemIsEditable)
                 self.table.setItem(r, 3, tot_item)
 
-                # Columna 4: "botón" de eliminar como celda roja con X
+                # Columna 4: "botón" X
                 del_item = QTableWidgetItem("✕")
                 del_item.setTextAlignment(Qt.AlignCenter)
                 del_item.setFlags(del_item.flags() & ~Qt.ItemIsEditable)
-                del_item.setBackground(QBrush(QColor("#d9534f")))
-                del_item.setForeground(QBrush(QColor("white")))
+                del_item.setBackground(QBrush(QColor("#ffebeb")))
+                del_item.setForeground(QBrush(QColor("#d9534f")))
                 self.table.setItem(r, 4, del_item)
+            # Al terminar de cargar todas las filas, seleccionamos la primera
+            if self.table.rowCount() > 0:
+                self.table.setCurrentCell(0, 1)  # fila 0, columna Cant
         finally:
             self._updating_table = False
 
         self.refresh_totals()
-        self.in_search.setFocus()
+        # Solo mandamos el foco al buscador si NO venimos de un atajo de tabla
+        if not self._preserve_table_focus:
+            self.in_search.setFocus()
+
 
     def clear_ticket_items(self):
         if not self.current_ticket_id:
@@ -557,34 +591,113 @@ class POSView(QWidget):
             return
 
         ts.remove_item(int(line_id))
+
+        # Recargar manteniendo foco en la tabla
+        self._preserve_table_focus = True
         self.load_ticket(self.current_ticket_id)
+        self._preserve_table_focus = False
         self._refresh_tickets_sidebar()
+
+        # Seleccionar una fila coherente tras el borrado
+        if self.table.rowCount() > 0:
+            new_row = min(row, self.table.rowCount() - 1)
+            self.table.setCurrentCell(new_row, 1)
+            self.table.setFocus()
+    
+    
+    def _focus_table(self):
+        """Pone el foco en la tabla del ticket y selecciona una fila para navegar con ↑/↓."""
+        if self.table.rowCount() == 0:
+            return
+
+        row = self.table.currentRow()
+        if row < 0:
+            row = 0
+
+        self.table.setCurrentCell(row, 1)  # columna Cant
+        self.table.setFocus()
+
+
+    def _focus_search(self):
+        """Vuelve el foco al campo de búsqueda de productos."""
         self.in_search.setFocus()
-        
+        self.in_search.selectAll()
+
+
+    def _change_current_qty(self, delta: int):
+        """
+        Cambia la cantidad de la fila actualmente seleccionada en la tabla
+        sumando 'delta' (por ejemplo +1 o -1), sin mover el foco fuera de la tabla.
+        """
+        if not self.current_ticket_id:
+            return
+
+        row = self.table.currentRow()
+        if row < 0:
+            return
+
+        prod_cell = self.table.item(row, 0)   # columna Producto
+        qty_item = self.table.item(row, 1)    # columna Cant
+        if not prod_cell or not qty_item:
+            return
+
+        line_id = prod_cell.data(Qt.UserRole)
+        if line_id is None:
+            return
+
+        # Leer cantidad actual
+        try:
+            current_qty = int(qty_item.text())
+        except Exception:
+            current_qty = 1
+
+        new_qty = current_qty + delta
+        if new_qty <= 0:
+            # No permitimos cantidades 0 o negativas
+            return
+
+        # Actualizar en BD
+        ts.update_item_qty(int(line_id), new_qty)
+
+        # Recargar tabla manteniendo foco en la tabla
+        self._preserve_table_focus = True
+        self.load_ticket(self.current_ticket_id)
+        self._preserve_table_focus = False
+
+        # Restaurar selección en la misma fila (o la última si se acortó la tabla)
+        if self.table.rowCount() > 0:
+            new_row = min(row, self.table.rowCount() - 1)
+            self.table.setCurrentCell(new_row, 1)
+            self.table.setFocus()
+
+        # Actualizar barra lateral
+        self._refresh_tickets_sidebar()
+
+
     def eventFilter(self, obj, event):
-        """Permite modificar cantidad con flechas ↑/↓ en la fila seleccionada."""
+        """
+        Atajos de teclado en la tabla:
+        - Flechas ↑/↓: navegación normal entre filas (Qt se encarga).
+        - Teclas '+' y '-': aumentan / disminuyen la cantidad de la fila seleccionada.
+        """
         if obj is self.table and event.type() == QEvent.KeyPress:
-            if event.key() in (Qt.Key_Up, Qt.Key_Down):
-                row = self.table.currentRow()
-                if row < 0:
-                    return True
-                qty_item = self.table.item(row, 1)
-                if not qty_item:
-                    return True
-                try:
-                    val = int(qty_item.text())
-                except Exception:
-                    val = 1
-                # ↑ suma, ↓ resta
-                if event.key() == Qt.Key_Up:
-                    val += 1
-                else:
-                    val -= 1
-                if val <= 0:
-                    return True
-                qty_item.setText(str(val))  # dispara on_table_item_changed
-                return True
+            key = event.key()
+
+            # Detectar + (incluye algunos teclados donde '+' comparte con '=')
+            if key in (Qt.Key_Plus, Qt.Key_Equal):
+                self._change_current_qty(+1)
+                return True  # ya manejamos el evento
+
+            # Detectar - (incluye algunos teclados donde '-' comparte con '_')
+            if key in (Qt.Key_Minus, Qt.Key_Underscore):
+                self._change_current_qty(-1)
+                return True  # ya manejamos el evento
+
+            # Flechas ↑/↓ se dejan pasar para que Qt cambie de fila normalmente
+
         return super().eventFilter(obj, event)
+
+
 
     def _on_table_cell_clicked(self, row: int, column: int):
         """Si se hace clic en la columna de la X, elimina la línea; si no, permite editar cantidad."""

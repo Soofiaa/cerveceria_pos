@@ -13,19 +13,6 @@ from datetime import datetime
 import csv
 
 
-def _fmt_dmy(date_str: str) -> str:
-    """Convierte 'YYYY-MM-DD HH:MM:SS' o 'YYYY-MM-DD' a 'dd-mm-aaaa'."""
-    if not date_str:
-        return ""
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-        try:
-            dt = datetime.strptime(date_str[:len(fmt)], fmt)
-            return dt.strftime("%d-%m-%Y")
-        except Exception:
-            pass
-    return date_str
-
-
 def _fmt_pct(value) -> str:
     """
     Formatea un porcentaje como '25,0 %'.
@@ -79,7 +66,7 @@ class ReportsView(QWidget):
         self.btn_run.clicked.connect(self.load_data)
         self.btn_export.clicked.connect(self.export_csv)
 
-        # --- Layout superior ---
+        # --- Layout superior (filtros + botones) ---
         top = QHBoxLayout()
         top.addWidget(QLabel("Desde:"))
         top.addWidget(self.in_from)
@@ -98,11 +85,11 @@ class ReportsView(QWidget):
         box = QGroupBox("Resumen")
         grid = QGridLayout()
 
-        self.lbl_total      = QLabel("$0");      self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_profit     = QLabel("$0");      self.lbl_profit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_count      = QLabel("0");       self.lbl_count.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_avg        = QLabel("$0");      self.lbl_avg.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_avg_margin = QLabel("0,0 %");   self.lbl_avg_margin.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_total      = QLabel("$0");    self.lbl_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_profit     = QLabel("$0");    self.lbl_profit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_count      = QLabel("0");     self.lbl_count.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_avg        = QLabel("$0");    self.lbl_avg.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_avg_margin = QLabel("0,0 %"); self.lbl_avg_margin.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         grid.addWidget(QLabel("Total vendido:"),            0, 0); grid.addWidget(self.lbl_total,      0, 1)
         grid.addWidget(QLabel("Ganancia total:"),           1, 0); grid.addWidget(self.lbl_profit,     1, 1)
@@ -110,19 +97,53 @@ class ReportsView(QWidget):
         grid.addWidget(QLabel("Venta promedio:"),           3, 0); grid.addWidget(self.lbl_avg,        3, 1)
         grid.addWidget(QLabel("Margen utilidad promedio:"), 4, 0); grid.addWidget(self.lbl_avg_margin, 4, 1)
 
+        # <<< 5.d: que el resumen se vea como “card” >>>
+        grid.setContentsMargins(10, 8, 10, 10)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(4)
+
         box.setLayout(grid)
+        box.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 8px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 4px;
+            }
+        """)
 
         # --- Tabla Top productos ---
         self.tbl_top = QTableWidget(0, 3)
+        self.tbl_top.setAlternatingRowColors(True)  # ya lo tenías (bien)
         self.tbl_top.setHorizontalHeaderLabels(["Producto", "Cant.", "Ingreso"])
-        self.tbl_top.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tbl_top.setEditTriggers(QTableWidget.NoEditTriggers)
 
-        # Filas más altas para que sea fácil seleccionar
+        # <<< 5.c: tabla más cómoda / moderna >>>
+        header = self.tbl_top.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setStretchLastSection(True)
+
+        self.tbl_top.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_top.verticalHeader().setDefaultSectionSize(32)
+        # opcional: ocultar números de fila si quieres más limpio
+        # self.tbl_top.verticalHeader().setVisible(False)
 
         # --- Layout principal ---
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        # Título grande arriba
+        title = QLabel("Reportes")
+        title_font = title.font()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        layout.addWidget(title)
+
         layout.addLayout(top)
         layout.addWidget(box)
         layout.addWidget(QLabel("Top productos"))
@@ -133,6 +154,7 @@ class ReportsView(QWidget):
 
         # Carga inicial
         self._set_today()
+
 
     def _tune_sizes(self):
         """Ajusta alturas de controles para ser más amigables."""
