@@ -1,6 +1,15 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QLineEdit, QFormLayout, QWidget, QMessageBox
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 from PySide6.QtCore import Qt
 
@@ -9,10 +18,14 @@ from core.utils_format import fmt_money
 
 class ChargeDialog(QDialog):
     """
-    Diálogo de cobro:
-    - Efectivo: monto recibido + cálculo automático de vuelto.
-    - Otros medios: campo de referencia opcional.
+    Diálogo de cobro con estética moderna y mensajes claros.
+
+    Elementos destacados:
+    - Encabezado con total destacado para reforzar la acción del cobro.
+    - Campos alineados a la derecha para montos y referencia opcional.
+    - Botones primario/ghost en línea con el tema del POS.
     """
+
     def __init__(self, total: int, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Cobrar")
@@ -24,35 +37,53 @@ class ChargeDialog(QDialog):
         self.total = int(total or 0)
 
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel(f"Total a cobrar: {fmt_money(self.total)}"))
+        lay.setContentsMargins(14, 14, 14, 14)
+        lay.setSpacing(12)
+
+        title = QLabel("Cobrar venta")
+        title.setObjectName("DialogTitle")
+        total_badge = QLabel(f"Total a cobrar: {fmt_money(self.total)}")
+        total_badge.setObjectName("TotalsBadge")
+        total_badge.setAlignment(Qt.AlignCenter)
+
+        lay.addWidget(title)
+        lay.addWidget(total_badge)
 
         # Medio de pago
         self.cmb = QComboBox()
         self.cmb.addItems(["Efectivo", "Débito", "Crédito", "Transferencia"])
+        self.cmb.setMinimumHeight(32)
 
-        lay.addWidget(QLabel("Medio de pago:"))
-        lay.addWidget(self.cmb)
+        payment_box = QGroupBox("Medio de pago")
+        payment_form = QFormLayout()
+        payment_form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        payment_form.addRow("Selecciona", self.cmb)
+        payment_box.setLayout(payment_form)
+        lay.addWidget(payment_box)
 
         # Área dinámica según medio de pago
         self.panel = QWidget()
         self.form = QFormLayout(self.panel)
+        self.form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.form.setFormAlignment(Qt.AlignTop)
 
         # ----- Campos para efectivo -----
-        self.lbl_monto = QLabel("Monto recibido:")
+        self.lbl_monto = QLabel("Monto recibido")
         self.in_monto = QLineEdit()
         self.in_monto.setPlaceholderText("Monto recibido")
         self.in_monto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.in_monto.setMinimumHeight(32)
 
-        self.lbl_vuelto_title = QLabel("Vuelto:")
+        self.lbl_vuelto_title = QLabel("Vuelto")
         self.lbl_vuelto = QLabel("$0")
         self.lbl_vuelto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         # ----- Campo para referencia (otros medios) -----
-        self.lbl_ref_title = QLabel("Referencia:")
+        self.lbl_ref_title = QLabel("Referencia")
         self.in_ref = QLineEdit()
         self.in_ref.setPlaceholderText("Número de referencia (opcional)")
         self.in_ref.setMinimumHeight(32)
+        self.in_ref.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         # Agregamos TODAS las filas una sola vez
         self.form.addRow(self.lbl_monto, self.in_monto)
@@ -63,10 +94,15 @@ class ChargeDialog(QDialog):
 
         # Botones
         btns = QHBoxLayout()
+        btns.addStretch()
+
         ok = QPushButton("Confirmar")
         cancel = QPushButton("Cancelar")
+        ok.setProperty("buttonType", "primary")
+        cancel.setProperty("buttonType", "ghost")
         ok.setMinimumHeight(34)
         cancel.setMinimumHeight(34)
+
         btns.addWidget(ok)
         btns.addWidget(cancel)
         lay.addLayout(btns)
