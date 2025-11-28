@@ -46,6 +46,27 @@ class ReportsView(QWidget):
         }
         """)
 
+        # --- Layout principal (lo creamos AL INICIO) ---
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        # Título grande arriba
+        title = QLabel("Reportes")
+        title_font = title.font()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        layout.addWidget(title)
+
+        # --- Hint / instrucción clara (debajo del título) ---
+        hint = QLabel(
+            'En caso de querer buscar entre una fecha específica, elegir intervalo y hacer clic en "Buscar".'
+        )
+        hint.setStyleSheet("color: #888888; font-size: 12pt;")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
         # --- Filtros de fechas ---
         self.in_from = QDateEdit(QDate.currentDate())
         self.in_from.setCalendarPopup(True)
@@ -97,7 +118,6 @@ class ReportsView(QWidget):
         grid.addWidget(QLabel("Venta promedio:"),           3, 0); grid.addWidget(self.lbl_avg,        3, 1)
         grid.addWidget(QLabel("Margen utilidad promedio:"), 4, 0); grid.addWidget(self.lbl_avg_margin, 4, 1)
 
-        # <<< 5.d: que el resumen se vea como “card” >>>
         grid.setContentsMargins(10, 8, 10, 10)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(4)
@@ -118,32 +138,17 @@ class ReportsView(QWidget):
 
         # --- Tabla Top productos ---
         self.tbl_top = QTableWidget(0, 3)
-        self.tbl_top.setAlternatingRowColors(True)  # ya lo tenías (bien)
+        self.tbl_top.setAlternatingRowColors(True)
         self.tbl_top.setHorizontalHeaderLabels(["Producto", "Cant.", "Ingreso"])
 
-        # <<< 5.c: tabla más cómoda / moderna >>>
         header = self.tbl_top.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         header.setStretchLastSection(True)
 
         self.tbl_top.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_top.verticalHeader().setDefaultSectionSize(32)
-        # opcional: ocultar números de fila si quieres más limpio
-        # self.tbl_top.verticalHeader().setVisible(False)
 
-        # --- Layout principal ---
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
-
-        # Título grande arriba
-        title = QLabel("Reportes")
-        title_font = title.font()
-        title_font.setPointSize(16)
-        title_font.setBold(True)
-        title.setFont(title_font)
-        layout.addWidget(title)
-
+        # --- Agregar todo al layout principal ---
         layout.addLayout(top)
         layout.addWidget(box)
         layout.addWidget(QLabel("Top productos"))

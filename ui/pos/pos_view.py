@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QListWidget,
     QListWidgetItem, QSplitter, QCompleter, QStyledItemDelegate, QSpinBox,
-    QDialog
+    QDialog, QLineEdit, QAbstractItemView
 )
 
 from core import product_service as ps
@@ -39,6 +39,13 @@ class IntSpinDelegate(QStyledItemDelegate):
 
     def setModelData(self, editor, model, index):
         model.setData(index, str(editor.value()))
+
+
+class SearchLine(QLineEdit):
+    """QLineEdit que siempre selecciona todo el texto al recibir foco."""
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        QTimer.singleShot(0, self.selectAll)
 
 
 class POSView(QWidget):
@@ -94,7 +101,7 @@ class POSView(QWidget):
         top_right.addWidget(self.btn_rename)
 
         # --- Búsqueda + producto común ---
-        self.in_search = QLineEdit()
+        self.in_search = SearchLine()
         self.in_search.setPlaceholderText("Buscar producto o código (Enter para agregar)")
 
         # Autocompletar
@@ -127,17 +134,18 @@ class POSView(QWidget):
         self.table.setColumnWidth(4, 48)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setAlternatingRowColors(True)
+        
         self.table.setEditTriggers(
-            QTableWidget.DoubleClicked |
-            QTableWidget.EditKeyPressed |
-            QTableWidget.SelectedClicked
+            QAbstractItemView.EditKeyPressed
         )
+
         self.table.setItemDelegateForColumn(1, IntSpinDelegate(self))
         self.table.itemChanged.connect(self.on_table_item_changed)
         self.table.cellClicked.connect(self._on_table_cell_clicked)
         
-        # Permitir cambiar cantidad con flechas ↑/↓
+        # Permitir atajos de teclado (+/- y navegación) tanto en la tabla como en la búsqueda
         self.table.installEventFilter(self)
+        self.in_search.installEventFilter(self)
 
         # === Totales + botones inferiores ===
         self.lbl_totals = QLabel("Total: $0")
@@ -399,14 +407,23 @@ class POSView(QWidget):
         prod = ps.get_product(pid)
         ts.add_item(self.current_ticket_id, pid, qty=1, unit_price=prod["sale_price"])
 
-        # Limpiar casilla de búsqueda y sugerencias
+        # Limpiar casilla de búsqueda y sugerencias (pero SIN dejarle el foco)
         self.in_search.clear()
         self.selected_product_id = None
         self.update_suggestions("")
-        self.in_search.setFocus()
 
-        # Recargar tabla del ticket y actualizar panel izquierdo
+        # Recargar tabla del ticket dejando el foco en la tabla
+        self._preserve_table_focus = True
         self.load_ticket(self.current_ticket_id)
+        self._preserve_table_focus = False
+
+        # Seleccionar automáticamente la última fila (producto recién agregado)
+        last_row = self.table.rowCount() - 1
+        if last_row >= 0:
+            self.table.setCurrentCell(last_row, 1)  # columna Cant
+            self.table.setFocus()                   # ⬅️ foco en la tabla
+
+        # Actualizar panel izquierdo de tickets
         self._refresh_tickets_sidebar()
 
 
@@ -676,27 +693,67 @@ class POSView(QWidget):
 
     def eventFilter(self, obj, event):
         """
-        Atajos de teclado en la tabla:
-        - Flechas ↑/↓: navegación normal entre filas (Qt se encarga).
-        - Teclas '+' y '-': aumentan / disminuyen la cantidad de la fila seleccionada.
+        Atajos de teclado:
+        - En la TABLA:
+            + y -  -> aumentan / disminuyen cantidad del ítem seleccionado.
+            ↑ y ↓  -> navegación normal (deja que QTableWidget la maneje).
+        - En la BÚSQUEDA (in_search):
+            + y -  -> aumentan / disminuyen cantidad del ítem seleccionado.
+            ↑ y ↓  -> cambian la fila seleccionada en la tabla, PERO
+                      sin mover el foco fuera de la casilla de búsqueda.
         """
-        if obj is self.table and event.type() == QEvent.KeyPress:
+        if event.type() == QEvent.KeyPress:
             key = event.key()
 
-            # Detectar + (incluye algunos teclados donde '+' comparte con '=')
-            if key in (Qt.Key_Plus, Qt.Key_Equal):
-                self._change_current_qty(+1)
-                return True  # ya manejamos el evento
+            # --- Atajos cuando el foco está en la TABLA ---
+            if obj is self.table:
+                # Detectar + (incluye teclados donde '+' comparte con '=')
+                if key in (Qt.Key_Plus, Qt.Key_Equal):
+                    self._change_current_qty(+1)
+                    return True  # manejamos nosotros
 
-            # Detectar - (incluye algunos teclados donde '-' comparte con '_')
-            if key in (Qt.Key_Minus, Qt.Key_Underscore):
-                self._change_current_qty(-1)
-                return True  # ya manejamos el evento
+                # Detectar - (incluye teclados donde '-' comparte con '_')
+                if key in (Qt.Key_Minus, Qt.Key_Underscore):
+                    self._change_current_qty(-1)
+                    return True  # manejamos nosotros
 
-            # Flechas ↑/↓ se dejan pasar para que Qt cambie de fila normalmente
+                # Flechas ↑/↓: dejamos que la tabla navegue normalmente
+                return super().eventFilter(obj, event)
+
+            # --- Atajos cuando el foco está en la BÚSQUEDA ---
+            if obj is self.in_search:
+                # + / - modifican cantidad del ítem seleccionado en la tabla
+                if key in (Qt.Key_Plus, Qt.Key_Equal):
+                    self._change_current_qty(+1)
+                    return True  # IMPORTANTE: no dejar que QLineEdit procese la tecla
+
+                if key in (Qt.Key_Minus, Qt.Key_Underscore):
+                    self._change_current_qty(-1)
+                    return True
+
+                # Flecha ARRIBA: seleccionar ítem anterior en la tabla
+                if key == Qt.Key_Up:
+                    if self.table.rowCount() > 0:
+                        row = self.table.currentRow()
+                        if row < 0:
+                            row = self.table.rowCount() - 1
+                        else:
+                            row = max(0, row - 1)
+                        self.table.setCurrentCell(row, 1)  # columna Cant
+                    return True  # no dejamos que el QLineEdit cambie selección/cursor
+
+                # Flecha ABAJO: seleccionar ítem siguiente en la tabla
+                if key == Qt.Key_Down:
+                    if self.table.rowCount() > 0:
+                        row = self.table.currentRow()
+                        if row < 0:
+                            row = 0
+                        else:
+                            row = min(self.table.rowCount() - 1, row + 1)
+                        self.table.setCurrentCell(row, 1)
+                    return True
 
         return super().eventFilter(obj, event)
-
 
 
     def _on_table_cell_clicked(self, row: int, column: int):
@@ -720,11 +777,10 @@ class POSView(QWidget):
             self.in_search.setFocus()
             return
 
-        # Cualquier otra columna: enfocar la cantidad y abrir editor
+        # Cualquier otra columna: solo enfocar la cantidad, SIN abrir editor
         qty_item = self.table.item(row, 1)
         if qty_item:
             self.table.setCurrentCell(row, 1)
-            self.table.editItem(qty_item)
 
 
     def showEvent(self, event):
