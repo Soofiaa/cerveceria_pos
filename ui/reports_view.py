@@ -13,24 +13,12 @@ class ReportsView(QWidget, ReportActionsMixin):
     def __init__(self):
         super().__init__()
 
-        # Estilo local: fuente un poco más grande
-        self.setStyleSheet("""
-        QWidget {
-            font-size: 11pt;
-        }
-        QLineEdit, QDateEdit, QPushButton {
-            font-size: 11pt;
-        }
-        QHeaderView::section {
-            font-size: 10pt;
-        }
-        """)
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
         title = QLabel("Reportes")
+        title.setObjectName("SectionTitle")
         title_font = title.font()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -40,7 +28,7 @@ class ReportsView(QWidget, ReportActionsMixin):
         hint = QLabel(
             'En caso de querer buscar entre una fecha específica, elegir intervalo y hacer clic en "Buscar".'
         )
-        hint.setStyleSheet("color: #888888; font-size: 12pt;")
+        hint.setObjectName("HintLabel")
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
@@ -50,11 +38,17 @@ class ReportsView(QWidget, ReportActionsMixin):
         self.in_to.setCalendarPopup(True)
 
         self.btn_today = QPushButton("Hoy")
+        self.btn_today.setProperty("buttonType", "ghost")
         self.btn_week = QPushButton("Semana actual")
+        self.btn_week.setProperty("buttonType", "ghost")
         self.btn_month = QPushButton("Mes actual")
+        self.btn_month.setProperty("buttonType", "ghost")
         self.btn_year = QPushButton("Año actual")
+        self.btn_year.setProperty("buttonType", "ghost")
         self.btn_run = QPushButton("Buscar")
+        self.btn_run.setProperty("buttonType", "primary")
         self.btn_export = QPushButton("Exportar CSV")
+        self.btn_export.setProperty("buttonType", "ghost")
 
         self.btn_today.clicked.connect(self._set_today)
         self.btn_week.clicked.connect(self._set_week_current)
@@ -100,18 +94,7 @@ class ReportsView(QWidget, ReportActionsMixin):
         grid.setVerticalSpacing(4)
 
         box.setLayout(grid)
-        box.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 4px;
-            }
-        """)
+        box.setStyleSheet("")
 
         self.tbl_top = QTableWidget(0, 3)
         self.tbl_top.setAlternatingRowColors(True)
