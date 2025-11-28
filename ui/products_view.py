@@ -23,24 +23,9 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
-        # Fuente un poco más grande solo en esta pantalla
-        self.setStyleSheet("""
-        QWidget {
-            font-size: 11pt;
-        }
-        QLineEdit {
-            font-size: 11pt;
-        }
-        QPushButton {
-            font-size: 11pt;
-        }
-        QHeaderView::section {
-            font-size: 10pt;
-        }
-        """)
-
         # --- Título ---
         title = QLabel("Productos")
+        title.setObjectName("SectionTitle")
         title_font = title.font()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -53,7 +38,7 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
             "Haz doble clic en un producto para modificarlo.\n"
             "Haz un clic en un producto y usa \"Quitar producto\" para eliminarlo."
         )
-        hint.setStyleSheet("color: #888888; font-size: 12pt;")
+        hint.setObjectName("HintLabel")
         layout.addWidget(hint)
 
         # --- Búsqueda ---
@@ -93,7 +78,9 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         # --- Botones inferiores (Agregar / Quitar) ---
         buttons_row = QHBoxLayout()
         self.btn_new = QPushButton("Agregar producto")
+        self.btn_new.setProperty("buttonType", "primary")
         self.btn_delete = QPushButton("Quitar producto")
+        self.btn_delete.setProperty("buttonType", "danger")
 
         self.btn_new.clicked.connect(self.new_product)
         self.btn_delete.clicked.connect(self.delete_selected)
@@ -109,7 +96,9 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         backup_row = QHBoxLayout()
         backup_row.addWidget(QLabel("Respaldo de productos:"))
         self.btn_export = QPushButton("Guardar lista de productos...")
+        self.btn_export.setProperty("buttonType", "ghost")
         self.btn_import = QPushButton("Cargar lista de productos...")
+        self.btn_import.setProperty("buttonType", "ghost")
 
         self.btn_export.clicked.connect(self.export_products_csv)
         self.btn_import.clicked.connect(self.import_products_csv)

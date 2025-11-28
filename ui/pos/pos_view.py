@@ -34,27 +34,22 @@ class POSView(
 
         self._selected_line_id = None
 
-        self.setStyleSheet("""
-            QWidget {
-                font-size: 11pt;
-            }
-            QHeaderView::section {
-                font-size: 10pt;
-                font-weight: bold;
-            }
-        """)
-
         # === Panel izquierdo: Tickets abiertos ===
         self.list_tickets = QListWidget()
+        self.list_tickets.setObjectName("TicketList")
         self.btn_new = QPushButton("Nuevo")
+        self.btn_new.setProperty("buttonType", "primary")
         self.btn_delete = QPushButton("Eliminar")
+        self.btn_delete.setProperty("buttonType", "danger")
 
         self.btn_new.clicked.connect(self.new_ticket)
         self.btn_delete.clicked.connect(self.delete_ticket)
         self.list_tickets.itemSelectionChanged.connect(self.on_ticket_selected)
 
         left = QVBoxLayout()
-        left.addWidget(QLabel("Tickets abiertos"))
+        tickets_title = QLabel("Tickets abiertos")
+        tickets_title.setObjectName("SectionTitle")
+        left.addWidget(tickets_title)
         left.addWidget(self.list_tickets)
         row_left = QHBoxLayout()
         row_left.addWidget(self.btn_new)
@@ -62,6 +57,7 @@ class POSView(
         left.addLayout(row_left)
 
         left_widget = QWidget()
+        left_widget.setObjectName("Sidebar")
         left_widget.setLayout(left)
 
         # === Panel derecho: datos del ticket + ítems ===
@@ -69,6 +65,7 @@ class POSView(
         self.in_ticket_name.setPlaceholderText("Nombre del ticket (opcional)")
 
         self.btn_rename = QPushButton("Renombrar")
+        self.btn_rename.setProperty("buttonType", "ghost")
         self.btn_rename.clicked.connect(self.rename_ticket)
 
         top_right = QHBoxLayout()
@@ -96,6 +93,7 @@ class POSView(
         self.in_search.returnPressed.connect(self.add_item_by_search)
 
         self.btn_add_common = QPushButton("Agregar producto común")
+        self.btn_add_common.setProperty("buttonType", "ghost")
         self.btn_add_common.clicked.connect(self.add_common_item_dialog)
 
         add_row = QHBoxLayout()
@@ -125,6 +123,7 @@ class POSView(
 
         # === Totales + botones inferiores ===
         self.lbl_totals = QLabel("Total: $0")
+        self.lbl_totals.setObjectName("TotalsBadge")
 
         # --- Estilo tipo 'card' para el total ---
         font_total = self.lbl_totals.font()
@@ -132,18 +131,13 @@ class POSView(
         font_total.setPointSize(20)
         self.lbl_totals.setFont(font_total)
 
-        self.lbl_totals.setStyleSheet("""
-            padding: 18px 24px;
-            border-radius: 10px;
-            border: 2px solid #2ecc71;
-            background-color: #ecf9f0;
-            color: #27ae60;
-        """)
         self.lbl_totals.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.lbl_totals.setMinimumHeight(70)
 
         self.btn_clear = QPushButton("Limpiar ticket")
+        self.btn_clear.setProperty("buttonType", "ghost")
         self.btn_charge = QPushButton("F12 - COBRAR")
+        self.btn_charge.setProperty("buttonType", "primary")
 
         self.btn_clear.clicked.connect(self.clear_ticket_items)
         self.btn_charge.clicked.connect(self.charge_ticket)
@@ -163,6 +157,7 @@ class POSView(
         right.addLayout(bottom)
 
         right_widget = QWidget()
+        right_widget.setObjectName("ContentArea")
         right_widget.setLayout(right)
 
         # === Splitter principal ===
@@ -172,8 +167,8 @@ class POSView(
         splitter.setSizes([250, 800])
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)  # margen interno
-        layout.setSpacing(8)                       # espacio entre elementos
+        layout.setContentsMargins(14, 14, 14, 14)  # margen interno
+        layout.setSpacing(10)                       # espacio entre elementos
         layout.addWidget(splitter)
 
 
