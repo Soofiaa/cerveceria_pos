@@ -6,7 +6,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSpinBox,
     QVBoxLayout,
 )
 from PySide6.QtCore import Qt
@@ -47,18 +46,18 @@ class CommonProductDialog(QDialog):
         form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         form.setFormAlignment(Qt.AlignTop)
 
-        # Cantidad
-        self.spin_qty = QSpinBox()
-        self.spin_qty.setRange(1, 10**6)
-        self.spin_qty.setValue(1)
-        self.spin_qty.setAccelerated(True)
-        self.spin_qty.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.spin_qty.setMinimumHeight(34)
-        form.addRow("Cantidad", self.spin_qty)
+        # Cantidad (solo números, sin botones de spin)
+        self.in_qty = QLineEdit()
+        self.in_qty.setValidator(QIntValidator(1, 10**6, self))
+        self.in_qty.setText("1")
+        self.in_qty.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.in_qty.setMinimumHeight(34)
+        form.addRow("Cantidad", self.in_qty)
+
 
         # Precio
         self.in_price = QLineEdit()
-        self.in_price.setValidator(QIntValidator(1, 10**9, self))  # <= SOLO NÚMEROS
+        self.in_price.setValidator(QIntValidator(1, 10**9, self))
         self.in_price.setPlaceholderText("Ej: 1.500")
         self.in_price.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.in_price.setMinimumHeight(34)
@@ -101,6 +100,16 @@ class CommonProductDialog(QDialog):
             QMessageBox.warning(self, "Precio inválido", "Ingresa un precio válido mayor que 0.")
             return
 
+        # Validar cantidad
+        try:
+            qty = int(self.in_qty.text() or "0")
+            if qty <= 0:
+                raise ValueError
+        except Exception:
+            QMessageBox.warning(self, "Cantidad inválida", "Ingresa una cantidad válida mayor que 0.")
+            return
+
         self.price_value = price
-        self.qty_value = self.spin_qty.value()
+        self.qty_value = qty
         self.accept()
+

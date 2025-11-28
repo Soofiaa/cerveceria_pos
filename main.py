@@ -152,7 +152,6 @@ def _build_stylesheet() -> str:
         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f8c86b, stop:1 #f2a72a);
         border: 1px solid #f2a72a;
         color: #0f172a;
-        box-shadow: 0 8px 16px rgba(242, 167, 42, 0.25);
     }
     QPushButton[buttonType="primary"]:hover {
         background-color: #f6b84b;
@@ -168,28 +167,81 @@ def _build_stylesheet() -> str:
     }
 
     QPushButton[buttonType="ghost"] {
-        background-color: #ffffff;
-        border: 1px dashed #d7c9ae;
-        color: #4b5563;
+        background-color: #f9fafb;
+        border: 1px dashed #cbd5e1;
+        color: #374151;
     }
     QPushButton[buttonType="ghost"]:hover {
-        background-color: #f4efe3;
+        background-color: #e5e7eb;
         border-style: solid;
     }
+    
+    /* Botones de filtro en PAGAR */
+        QPushButton#PayMethodButton {
+        border-radius: 999px;
+        padding: 6px 14px;
+    }
+    QPushButton#PayMethodButton:checked {
+        background-color: #fde68a;
+        border: 1px solid #f59e0b;
+        color: #92400e;
+    }
 
+    /* Botones de filtro en Reportes (Hoy, Semana, Mes, Año) */
+    QPushButton#ReportFilter {
+        background-color: #fff7e6;
+        border-radius: 999px;
+        border: 1px solid #fcd34d;
+        color: #92400e;
+        padding: 6px 14px;
+        font-weight: 600;
+    }
+    QPushButton#ReportFilter:hover {
+        background-color: #fde68a;
+    }
+    
+    
     /* ===================== INPUTS ===================== */
-    QLineEdit, QComboBox, QSpinBox, QDateEdit {
+    QLineEdit, QComboBox, QSpinBox {
         background-color: #ffffff;
-        border: 1px solid #d7c9ae;
-        border-radius: 12px;
-        padding: 8px 12px;
-        selection-background-color: #f2a72a;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 6px 10px;
+        selection-background-color: #f4a506;
         selection-color: #111827;
     }
+
     QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
         border: 1px solid #f2a72a;
-        box-shadow: 0 0 0 3px rgba(242, 167, 42, 0.25);
     }
+
+    
+        /* ===================== QDateEdit (Desde / Hasta) ===================== */
+    QDateEdit {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 4px 8px;
+        /* no tocar el icono aquí */
+        selection-background-color: #f4a506;
+        selection-color: #111827;
+    }
+
+    QDateEdit:focus {
+        border: 1px solid #f2a72a;
+    }
+
+    /* Solo reubicamos el área del botón, SIN cambiar el icono nativo */
+    QDateEdit::drop-down {
+        subcontrol-origin: padding;
+        subcontrol-position: right center;
+        width: 18px;
+        border: none;
+        background: transparent;   /* sin barra de color */
+        margin-right: 2px;
+    }
+
+
 
     /* ===================== TABLAS ===================== */
     QTableView, QTableWidget {
@@ -214,14 +266,18 @@ def _build_stylesheet() -> str:
     QGroupBox {
         border: 1px solid #e4d9c5;
         border-radius: 12px;
-        margin-top: 14px;
+        margin-top: 18px;
         background-color: #ffffff;
     }
     QGroupBox::title {
-        left: 12px;
+        subcontrol-origin: margin;
+        left: 16px;
+        padding: 0 6px;
         color: #c26a00;
         font-weight: 800;
+        background-color: #fdfaf3;  /* mismo fondo general para que se "corte" el borde */
     }
+    
 
     /* ===================== DIALOGOS ===================== */
     QDialog {

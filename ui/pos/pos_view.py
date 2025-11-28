@@ -49,7 +49,7 @@ class POSView(
 
         left = QVBoxLayout()
         tickets_title = QLabel("Tickets abiertos")
-        tickets_title.setObjectName("SidebarTitle")   # <<--- CAMBIO AQUÍ
+        tickets_title.setObjectName("SidebarTitle")
         left.addWidget(tickets_title)
         left.addWidget(self.list_tickets)
 

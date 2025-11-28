@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QDialog,
@@ -8,7 +9,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QVBoxLayout,
+    QVBoxLayout
 )
 
 
@@ -34,61 +35,81 @@ class ProductDialog(QDialog):
         is_edit = data is not None
         self.setWindowTitle("Editar producto" if is_edit else "Nuevo producto")
 
+        # Tamaño y márgenes generales del diálogo
+        self.resize(420, 260)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
 
-        title_label = QLabel("Nuevo producto" if not is_edit else "Editar producto")
-        title_label.setObjectName("DialogTitle")      # <<--- se estiliza con el stylesheet
+        # Título grande del diálogo
+        title_label = QLabel("Editar producto" if is_edit else "Nuevo producto")
+        title_label.setObjectName("DialogTitle")
+        layout.addWidget(title_label)
 
+        # Subtítulo / ayuda breve
+        subtitle = QLabel("Completa los datos para agregar el producto al catálogo.")
+        subtitle.setObjectName("HintLabel")
+        subtitle.setWordWrap(True)
+        layout.addWidget(subtitle)
+
+        # === Grupo principal ===
         group = QGroupBox("Datos del producto")
-        form = QFormLayout()
+        group_layout = QFormLayout()
+        group_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        group_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        group_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        group_layout.setHorizontalSpacing(10)
+        group_layout.setVerticalSpacing(6)
+        group_layout.setContentsMargins(14, 10, 14, 12)
 
-
+        # Campos
         self.in_name = QLineEdit()
+        self.in_name.setPlaceholderText("Ej: CORONAS 330")
 
-        # === VALIDACIÓN NUMÉRICA CORRECTA ===
         self.in_sale = QLineEdit()
         self.in_sale.setValidator(QIntValidator(0, 10**9, self))
         self.in_sale.setPlaceholderText("Ej: 2200")
+        self.in_sale.setAlignment(Qt.AlignRight)
 
         self.in_purchase = QLineEdit()
         self.in_purchase.setValidator(QIntValidator(0, 10**9, self))
         self.in_purchase.setPlaceholderText("Opcional. Ej: 1000")
+        self.in_purchase.setAlignment(Qt.AlignRight)
 
         self.in_barcode = QLineEdit()
         self.in_barcode.setPlaceholderText("Opcional")
 
-        # Altura más cómoda en el diálogo
+        # Altura homogénea en los campos
         for le in [self.in_name, self.in_sale, self.in_purchase, self.in_barcode]:
-            le.setMinimumHeight(34)
+            le.setMinimumHeight(32)
 
-        form.addRow("Nombre*", self.in_name)
-        form.addRow("Precio venta*", self.in_sale)
-        form.addRow("Precio compra", self.in_purchase)
-        form.addRow("Código de barras", self.in_barcode)
+        # Etiquetas del formulario
+        group_layout.addRow("Nombre*", self.in_name)
+        group_layout.addRow("Precio venta*", self.in_sale)
+        group_layout.addRow("Precio compra", self.in_purchase)
+        group_layout.addRow("Código de barras", self.in_barcode)
 
-        group.setLayout(form)
-        layout.addWidget(title_label)   # <<--- NUEVA LÍNEA
+        group.setLayout(group_layout)
         layout.addWidget(group)
 
-        # Botones Guardar / Cancelar
+        # === Botones Guardar / Cancelar ===
         btns = QHBoxLayout()
         btns.addStretch()
-        
+
         self.btn_save = QPushButton("Guardar")
-        self.btn_save.setProperty("buttonType", "primary")   # <<--- NUEVA
+        self.btn_save.setProperty("buttonType", "primary")
+
         self.btn_cancel = QPushButton("Cancelar")
-        self.btn_cancel.setProperty("buttonType", "ghost")   # <<--- NUEVA
+        self.btn_cancel.setProperty("buttonType", "ghost")
 
         self.btn_save.setMinimumHeight(36)
         self.btn_cancel.setMinimumHeight(36)
-
 
         btns.addWidget(self.btn_save)
         btns.addWidget(self.btn_cancel)
         layout.addLayout(btns)
 
+        # Conexiones
         self.btn_save.clicked.connect(self._on_accept)
         self.btn_cancel.clicked.connect(self.reject)
 

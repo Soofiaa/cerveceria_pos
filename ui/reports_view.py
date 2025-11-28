@@ -1,12 +1,133 @@
 # ui/reports_view.py
 from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDateEdit,
     QTableWidget, QHeaderView, QGroupBox, QGridLayout,
-    QAbstractItemView
+    QAbstractItemView, QToolButton, QCalendarWidget
 )
 
-from ui.reports import ReportActionsMixin
+from ui.reports.actions import ReportActionsMixin
+
+
+class MonthOnlyCalendar(QCalendarWidget):
+    """
+    Calendario que SOLO dibuja los días del mes actualmente mostrado.
+    Los días de meses anterior/siguiente quedan como celdas vacías.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setGridVisible(True)
+        self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+
+        # Altura fija razonable (ajústala si quieres)
+        self.setFixedHeight(280)
+
+    def paintCell(self, painter, rect, date):
+        current_year = self.yearShown()
+        current_month = self.monthShown()
+
+        # Solo dibujamos si pertenece al mes actual
+        if date.year() == current_year and date.month() == current_month:
+            super().paintCell(painter, rect, date)
+        else:
+            # No dibujar nada en celdas de otros meses
+            return
+
+
+class ModernDateEdit(QDateEdit):
+    """
+    QDateEdit con flecha moderna dibujada con QToolButton interno
+    y un calendario popup propio.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Estilo del campo
+        self.setStyleSheet(
+            """
+            QDateEdit {
+                background-color: #ffffff;
+                border: 1px solid #d1d5db;
+                border-radius: 10px;
+                padding: 4px 8px;
+                padding-right: 22px;  /* espacio para la flecha moderna */
+                selection-background-color: #f4a506;
+                selection-color: #111827;
+            }
+            QDateEdit:focus {
+                border: 1px solid #f2a72a;
+            }
+
+            /* Ocultar drop-down nativo (flecha vieja) */
+            QDateEdit::drop-down {
+                width: 0px;
+                border: 0px;
+            }
+
+            /* OCULTAR LOS BOTONES DE SUBIR Y BAJAR FECHA */
+            QDateEdit::up-button {
+                width: 0px;
+                height: 0px;
+                border: none;
+            }
+            QDateEdit::down-button {
+                width: 0px;
+                height: 0px;
+                border: none;
+            }
+            """
+        )
+
+        # Calendario popup propio
+        self._calendar = MonthOnlyCalendar(self)
+        self._calendar.setWindowFlags(Qt.Popup)
+        self._calendar.clicked.connect(self._on_calendar_clicked)
+        self._calendar.hide()
+
+
+        # Botón interno con flecha moderna
+        self._btn = QToolButton(self)
+        self._btn.setText("▼")
+        self._btn.setCursor(Qt.PointingHandCursor)
+        self._btn.setStyleSheet(
+            """
+            QToolButton {
+                border: none;
+                padding: 0px;
+                font-weight: 900;
+                color: #6b7280;
+            }
+            QToolButton:hover {
+                color: #374151;
+            }
+            """
+        )
+        self._btn.clicked.connect(self.showCalendarPopup)
+
+    def resizeEvent(self, event):
+        """Reubicar la flecha siempre pegada a la derecha."""
+        super().resizeEvent(event)
+        sz = self._btn.sizeHint()
+        x = self.rect().right() - sz.width() - 4
+        y = (self.rect().height() - sz.height()) // 2
+        self._btn.setGeometry(x, y, sz.width(), sz.height())
+
+    def showCalendarPopup(self):
+        """Muestra el calendario como popup justo debajo del control."""
+        # Sincronizar fecha seleccionada
+        self._calendar.setSelectedDate(self.date())
+        pos = self.mapToGlobal(self.rect().bottomLeft())
+        self._calendar.move(pos)
+        self._calendar.show()
+        self._calendar.raise_()
+        self._calendar.setFocus()
+
+    def _on_calendar_clicked(self, date: QDate):
+        """Cuando el usuario elige una fecha en el calendario."""
+        self.setDate(date)
+        self._calendar.hide()
 
 
 class ReportsView(QWidget, ReportActionsMixin):
@@ -32,23 +153,40 @@ class ReportsView(QWidget, ReportActionsMixin):
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
-        self.in_from = QDateEdit(QDate.currentDate())
-        self.in_from.setCalendarPopup(True)
-        self.in_to = QDateEdit(QDate.currentDate())
-        self.in_to.setCalendarPopup(True)
+        # DateEdits con flecha moderna
+        self.in_from = ModernDateEdit()
+        self.in_from.setDate(QDate.currentDate())
+
+        self.in_to = ModernDateEdit()
+        self.in_to.setDate(QDate.currentDate())
+
+        # Formato y tamaño suficientes para ver dd-MM-yyyy completo
+        for d in (self.in_from, self.in_to):
+            d.setDisplayFormat("dd-MM-yyyy")
+            d.setMinimumWidth(115)
+            d.setMinimumHeight(30)
 
         self.btn_today = QPushButton("Hoy")
         self.btn_today.setProperty("buttonType", "ghost")
+        self.btn_today.setObjectName("ReportFilter")
+
         self.btn_week = QPushButton("Semana actual")
         self.btn_week.setProperty("buttonType", "ghost")
+        self.btn_week.setObjectName("ReportFilter")
+
         self.btn_month = QPushButton("Mes actual")
         self.btn_month.setProperty("buttonType", "ghost")
+        self.btn_month.setObjectName("ReportFilter")
+
         self.btn_year = QPushButton("Año actual")
         self.btn_year.setProperty("buttonType", "ghost")
+        self.btn_year.setObjectName("ReportFilter")
+
         self.btn_run = QPushButton("Buscar")
         self.btn_run.setProperty("buttonType", "primary")
+
         self.btn_export = QPushButton("Exportar CSV")
-        self.btn_export.setProperty("buttonType", "ghost")
+        self.btn_export.setProperty("buttonType", "primary")
 
         self.btn_today.clicked.connect(self._set_today)
         self.btn_week.clicked.connect(self._set_week_current)
@@ -57,9 +195,11 @@ class ReportsView(QWidget, ReportActionsMixin):
         self.btn_run.clicked.connect(self.load_data)
         self.btn_export.clicked.connect(self.export_csv)
 
+        # Fila superior con filtros
         top = QHBoxLayout()
         top.addWidget(QLabel("Desde:"))
         top.addWidget(self.in_from)
+        top.addSpacing(8)
         top.addWidget(QLabel("Hasta:"))
         top.addWidget(self.in_to)
         top.addWidget(self.btn_run)
@@ -71,6 +211,7 @@ class ReportsView(QWidget, ReportActionsMixin):
         top.addSpacing(20)
         top.addWidget(self.btn_export)
 
+        # Resumen
         box = QGroupBox("Resumen")
         grid = QGridLayout()
 
@@ -94,8 +235,8 @@ class ReportsView(QWidget, ReportActionsMixin):
         grid.setVerticalSpacing(4)
 
         box.setLayout(grid)
-        box.setStyleSheet("")
 
+        # Tabla top productos
         self.tbl_top = QTableWidget(0, 3)
         self.tbl_top.setAlternatingRowColors(True)
         self.tbl_top.setHorizontalHeaderLabels(["Producto", "Cant.", "Ingreso"])
