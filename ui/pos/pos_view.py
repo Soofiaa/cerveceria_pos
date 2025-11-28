@@ -1,54 +1,28 @@
 # ui/pos/pos_view.py
 from PySide6.QtCore import Qt, QStringListModel, QTimer, Signal, QEvent
-from PySide6.QtGui import QKeySequence, QShortcut, QBrush, QColor
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QListWidget,
-    QListWidgetItem, QSplitter, QCompleter, QStyledItemDelegate, QSpinBox,
-    QDialog, QLineEdit, QAbstractItemView
+    QSplitter, QCompleter, QLineEdit, QAbstractItemView
 )
 
-from core import product_service as ps
 from core import ticket_service as ts
-from core import sales_service as ss
-from ui.charge_dialog import ChargeDialog
-from ui.common_product_dialog import CommonProductDialog
-from core.utils_format import fmt_money
+
+from ui.pos.pos_table import POSTableMixin
+from ui.pos.pos_search import POSSearchMixin
+from ui.pos.pos_tickets import POSTicketsMixin
+from ui.pos.pos_actions import POSActionsMixin
+from ui.pos.pos_widgets import IntSpinDelegate, SearchLine
 
 
-# --- Delegate: cantidades editables en tabla ---
-class IntSpinDelegate(QStyledItemDelegate):
-    def __init__(self, parent=None, minimum=1, maximum=10**6):
-        super().__init__(parent)
-        self.minimum = minimum
-        self.maximum = maximum
-
-    def createEditor(self, parent, option, index):
-        spin = QSpinBox(parent)
-        spin.setRange(self.minimum, self.maximum)
-        spin.setAccelerated(True)
-        spin.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        return spin
-
-    def setEditorData(self, editor, index):
-        try:
-            val = int(index.data() or 0)
-        except Exception:
-            val = self.minimum
-        editor.setValue(max(self.minimum, min(self.maximum, val)))
-
-    def setModelData(self, editor, model, index):
-        model.setData(index, str(editor.value()))
-
-
-class SearchLine(QLineEdit):
-    """QLineEdit que siempre selecciona todo el texto al recibir foco."""
-    def focusInEvent(self, event):
-        super().focusInEvent(event)
-        QTimer.singleShot(0, self.selectAll)
-
-
-class POSView(QWidget):
+class POSView(
+    QWidget,
+    POSTableMixin,
+    POSSearchMixin,
+    POSTicketsMixin,
+    POSActionsMixin,
+):
     # Señal que se emitirá cuando se complete una venta
     sale_completed = Signal()
 
@@ -57,6 +31,8 @@ class POSView(QWidget):
         self.current_ticket_id = None
         self._updating_table = False
         self._preserve_table_focus = False
+
+        self._selected_line_id = None
 
         self.setStyleSheet("""
             QWidget {
@@ -153,15 +129,18 @@ class POSView(QWidget):
         # --- Estilo tipo 'card' para el total ---
         font_total = self.lbl_totals.font()
         font_total.setBold(True)
+        font_total.setPointSize(20)
         self.lbl_totals.setFont(font_total)
 
         self.lbl_totals.setStyleSheet("""
-            padding: 14px 18px;
+            padding: 18px 24px;
             border-radius: 10px;
-            border: 1px solid #e0e0e0;
+            border: 2px solid #2ecc71;
+            background-color: #ecf9f0;
+            color: #27ae60;
         """)
         self.lbl_totals.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        # ----------------------------------------
+        self.lbl_totals.setMinimumHeight(70)
 
         self.btn_clear = QPushButton("Limpiar ticket")
         self.btn_charge = QPushButton("F12 - COBRAR")
@@ -211,8 +190,9 @@ class POSView(QWidget):
         # F12 para cobrar
         shortcut_charge = QShortcut(QKeySequence("F12"), self)
         shortcut_charge.activated.connect(self.charge_ticket)
-        # Suprimir para eliminar la línea seleccionada
-        shortcut_del = QShortcut(QKeySequence("Delete"), self.table)
+        
+        # Suprimir para eliminar la línea seleccionada del ticket
+        shortcut_del = QShortcut(QKeySequence("Delete"), self)
         shortcut_del.activated.connect(self._delete_current_row)
         
         # F2: ir a la tabla del ticket para navegar con ↑/↓ y usar +/-
@@ -248,248 +228,66 @@ class POSView(QWidget):
         # Precarga silenciosa del "Producto común" para evitar demora la primera vez
         QTimer.singleShot(0, self._warmup_common_product)
 
-    # --- Utilidades ---
-    def _ensure_common_product_id(self) -> int:
-        # Busca (o crea) "Producto común"
-        candidates = ps.list_products("Producto común")
-        for p in candidates:
-            if (p["name"] or "").strip().lower() == "producto común":
-                return p["id"]
-        return ps.create_product(
-            name="Producto común",
-            sale_price=0,
-            purchase_price=0,
-            barcode=None
-        )
-
-    # === Autocompletar ===
-    def update_suggestions(self, text: str):
-        text = (text or "").strip()
-        items = []
-        self.suggest_map.clear()
-        self.selected_product_id = None
-        if len(text) >= 1:
-            for p in ps.list_products(text)[:30]:
-                name = p["name"]
-                if name not in self.suggest_map:
-                    self.suggest_map[name] = p["id"]
-                    items.append(name)
-        self.suggest_model.setStringList(items)
-
-    def on_suggestion_chosen(self, chosen_text: str):
-        """Cuando el usuario elige una sugerencia del autocompletar."""
-        self.selected_product_id = self.suggest_map.get(chosen_text)
-
-        # Dejamos que el QCompleter termine y luego agregamos + limpiamos.
-        QTimer.singleShot(0, self.add_item_by_search)
-
-    # === Tickets ===
-    def reload_tickets(self, initial=False):
-        self.list_tickets.clear()
-        for t in ts.list_open_tickets():
-            name = (t.get("name") or f"Ticket {t['id']}").strip()
-            total = int(t.get("pending_total") or 0)
-            it = QListWidgetItem(name)
-            it.setData(Qt.UserRole, int(t["id"]))
-            self.list_tickets.addItem(it)
-        if self.list_tickets.count() and initial:
-            self.list_tickets.setCurrentRow(0)
-        if self.list_tickets.count() == 0:
-            self.current_ticket_id = None
-            self.clear_ticket_ui()
-            
-    def _refresh_tickets_sidebar(self):
-        """Recarga la lista de tickets manteniendo seleccionado el actual."""
-        current_id = self.current_ticket_id
-        self.reload_tickets(initial=False)
-        if current_id is None:
-            return
-
-        for i in range(self.list_tickets.count()):
-            it = self.list_tickets.item(i)
-            if it.data(Qt.UserRole) == current_id:
-                self.list_tickets.setCurrentRow(i)
-                break
-
-
-
-    def on_ticket_selected(self):
-        item = self.list_tickets.currentItem()
-        if not item:
-            return
-        tid = item.data(Qt.UserRole)
-        if tid is None:
-            return
-        self.load_ticket(int(tid))
-
-    def new_ticket(self):
-        ts.create_ticket(self.in_ticket_name.text().strip() or None)
-        self.reload_tickets()
-        self.list_tickets.setCurrentRow(0)
-        self.in_search.setFocus()
-
-    def rename_ticket(self):
-        if not self.current_ticket_id:
-            return
-
-        ts.rename_ticket(
-            self.current_ticket_id,
-            self.in_ticket_name.text().strip() or None
-        )
-
-        self.reload_tickets()
-
-        # --- Limpiar la casilla del nombre del ticket ---
-        self.in_ticket_name.clear()
-
-        self.in_search.setFocus()
-
-
-    def delete_ticket(self):
-        if not self.current_ticket_id:
-            return
-        if QMessageBox.question(
-            self,
-            "Eliminar",
-            "¿Eliminar este ticket sin cobrar?"
-        ) != QMessageBox.Yes:
-            return
-        ts.delete_ticket(self.current_ticket_id)
-        self.reload_tickets()
-        self.in_search.setFocus()
-
-    # === Ítems ===
-    def add_common_item_dialog(self):
-        if not self.current_ticket_id:
-            self.new_ticket()
-
-        dlg = CommonProductDialog(self)
-        if dlg.exec() != QDialog.Accepted:
-            return
-
-        unit_price = dlg.price_value
-        qty = dlg.qty_value
-        if unit_price is None or unit_price <= 0 or qty <= 0:
-            QMessageBox.warning(self, "Producto común", "Datos inválidos.")
-            return
-
-        pid = self._ensure_common_product_id()
-        ts.add_item(self.current_ticket_id, pid, qty=qty, unit_price=unit_price)
-
-        # Recargar tabla del ticket y actualizar panel izquierdo
-        self.load_ticket(self.current_ticket_id)
-        self._refresh_tickets_sidebar()
-
-        # Limpiar completamente la casilla de búsqueda
-        self.in_search.clear()
-        self.selected_product_id = None
-        self.update_suggestions("")
-        self.in_search.setFocus()
-
-
-    def add_item_by_search(self):
-        """Agrega producto por nombre/código: cantidad 1, precio del producto."""
-        if not self.current_ticket_id:
-            self.new_ticket()
-
-        pid = self.selected_product_id
-        if not pid:
-            q = (self.in_search.text() or "").strip()
-            if not q:
-                QMessageBox.warning(self, "Agregar", "Escribe nombre o código para buscar.")
-                return
-            cand = ps.list_products(q)
-            if not cand:
-                QMessageBox.warning(self, "Producto", "No se encontró producto.")
-                return
-            pid = cand[0]["id"]
-
-        prod = ps.get_product(pid)
-        ts.add_item(self.current_ticket_id, pid, qty=1, unit_price=prod["sale_price"])
-
-        # Limpiar casilla de búsqueda y sugerencias (pero SIN dejarle el foco)
-        self.in_search.clear()
-        self.selected_product_id = None
-        self.update_suggestions("")
-
-        # Recargar tabla del ticket dejando el foco en la tabla
-        self._preserve_table_focus = True
-        self.load_ticket(self.current_ticket_id)
-        self._preserve_table_focus = False
-
-        # Seleccionar automáticamente la última fila (producto recién agregado)
-        last_row = self.table.rowCount() - 1
-        if last_row >= 0:
-            self.table.setCurrentCell(last_row, 1)  # columna Cant
-            self.table.setFocus()                   # ⬅️ foco en la tabla
-
-        # Actualizar panel izquierdo de tickets
-        self._refresh_tickets_sidebar()
-
 
     # === Carga y tabla ===
     def load_ticket(self, ticket_id: int):
         """Producto | Cant (editable) | P.Unit | Total | ✕"""
+        # Guardamos el ID actual del ticket
         self.current_ticket_id = int(ticket_id)
+
+        # Obtenemos el ticket desde la capa de servicio
         t = ts.get_ticket(self.current_ticket_id)
         if not t:
             self.clear_ticket_ui()
             return
 
+        # Limpiamos el nombre visible (el nombre real se muestra en la lista de la izquierda)
         self.in_ticket_name.clear()
 
+        # Recordar la fila seleccionada ANTES de recargar,
+        # solo si queremos preservar contexto desde la acción que nos llamó.
+        prev_row = self.table.currentRow() if self._preserve_table_focus else -1
+
+        # --- Cargar la tabla usando el mixin POSTableMixin ---
         self._updating_table = True
         try:
-            self.table.setRowCount(0)
-            for it in ts.list_items(self.current_ticket_id):
-                r = self.table.rowCount()
-                self.table.insertRow(r)
-
-                prod_item = QTableWidgetItem(it["product_name"])
-                prod_item.setData(Qt.UserRole, it["id"])
-                self.table.setItem(r, 0, prod_item)
-
-                qty_item = QTableWidgetItem(str(it["qty"]))
-                qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                qty_item.setFlags(qty_item.flags() | Qt.ItemIsEditable)
-                self.table.setItem(r, 1, qty_item)
-
-                pu_item = QTableWidgetItem(fmt_money(it["unit_price"]))
-                pu_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                pu_item.setFlags(pu_item.flags() & ~Qt.ItemIsEditable)
-                self.table.setItem(r, 2, pu_item)
-
-                tot_item = QTableWidgetItem(fmt_money(it["line_total"]))
-                tot_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                tot_item.setFlags(tot_item.flags() & ~Qt.ItemIsEditable)
-                self.table.setItem(r, 3, tot_item)
-
-                # Columna 4: "botón" X
-                del_item = QTableWidgetItem("✕")
-                del_item.setTextAlignment(Qt.AlignCenter)
-                del_item.setFlags(del_item.flags() & ~Qt.ItemIsEditable)
-                del_item.setBackground(QBrush(QColor("#ffebeb")))
-                del_item.setForeground(QBrush(QColor("#d9534f")))
-                self.table.setItem(r, 4, del_item)
-            # Al terminar de cargar todas las filas, seleccionamos la primera
-            if self.table.rowCount() > 0:
-                self.table.setCurrentCell(0, 1)  # fila 0, columna Cant
+            # Esta función viene desde POSTableMixin (pos_table.py)
+            self.load_ticket_table(self.current_ticket_id)
         finally:
             self._updating_table = False
 
+        # Actualizamos los totales del ticket
         self.refresh_totals()
-        # Solo mandamos el foco al buscador si NO venimos de un atajo de tabla
+
+        # --- Restaurar selección REAL basada en _selected_line_id ---
+        restored = False
+        if self._selected_line_id is not None:
+            for r in range(self.table.rowCount()):
+                prod_cell = self.table.item(r, 0)
+                if prod_cell and prod_cell.data(Qt.UserRole) == self._selected_line_id:
+                    self.table.setCurrentCell(r, 1)  # columna Cant
+                    restored = True
+                    break
+
+        # Si no se pudo restaurar (ej: línea eliminada)
+        if not restored and self.table.rowCount() > 0:
+            # Si venimos de una acción de tabla y había fila previa, intentamos respetarla
+            if self._preserve_table_focus and prev_row >= 0:
+                row = min(prev_row, self.table.rowCount() - 1)
+            else:
+                row = 0
+
+            self.table.setCurrentCell(row, 1)  # columna Cant
+
+            # también actualizamos el ID seleccionado
+            prod_cell = self.table.item(row, 0)
+            if prod_cell:
+                self._selected_line_id = prod_cell.data(Qt.UserRole)
+
+        # Solo devolvemos el foco al buscador si NO venimos de una acción de tabla
         if not self._preserve_table_focus:
             self.in_search.setFocus()
 
-
-    def clear_ticket_items(self):
-        if not self.current_ticket_id:
-            return
-        for it in ts.list_items(self.current_ticket_id):
-            ts.remove_item(it["id"])
-        self.load_ticket(self.current_ticket_id)
-        self.in_search.setFocus()
 
     # === Edición de cantidad en línea ===
     def on_table_item_changed(self, item: QTableWidgetItem):
@@ -513,82 +311,29 @@ class POSView(QWidget):
                 raise ValueError
         except Exception:
             QMessageBox.warning(self, "Cantidad inválida", "Debe ser un número mayor que 0.")
+            # Recargar dejando todo consistente
+            self._preserve_table_focus = False
             self.load_ticket(self.current_ticket_id)
             return
 
+        # ===== Actualizar en BD =====
         ts.update_item_qty(line_id, new_qty)
-        self.load_ticket(self.current_ticket_id)
-        self._refresh_tickets_sidebar()
-        self.in_search.setFocus()
 
-    def refresh_totals(self):
-        if not self.current_ticket_id:
-            self.lbl_totals.setText("Total: $0")
-            return
-        _, _, tot = ts.calc_ticket_totals(self.current_ticket_id)
-        self.lbl_totals.setText(f"Total: {fmt_money(tot)}")
-        
-    def clear_ticket_ui(self):
-        """Limpia la UI del ticket cuando no hay ticket seleccionado."""
-        self.in_ticket_name.clear()
-        self.table.setRowCount(0)
-        self.lbl_totals.setText("Total: $0")
-
-
-    def clear_ticket_items(self):
-        """Elimina todos los ítems del ticket actual."""
-        if not self.current_ticket_id:
-            return
-        for it in ts.list_items(self.current_ticket_id):
-            ts.remove_item(it["id"])
-
-        self.load_ticket(self.current_ticket_id)
-        self._refresh_tickets_sidebar()
-        self.in_search.setFocus()
-        
-    def _remove_line_direct(self, line_id: int):
-        """Elimina una línea específica (se usa por atajo u otras acciones directas)."""
-        if not self.current_ticket_id:
-            return
-
-        ts.remove_item(int(line_id))
-        self.load_ticket(self.current_ticket_id)
-        self._refresh_tickets_sidebar()
-        self.in_search.setFocus()
-
-    # === Cobro ===
-    def charge_ticket(self):
-        if not self.current_ticket_id:
-            return
-        _, _, tot = ts.calc_ticket_totals(self.current_ticket_id)
-        if tot <= 0:
-            QMessageBox.warning(self, "Cobrar", "El ticket está vacío.")
-            return
-        dlg = ChargeDialog(total=tot, parent=self)
-        if dlg.exec() != QDialog.Accepted:
-            return
-        pay_method = dlg.selected_method or "efectivo"
-        ts.rename_ticket(self.current_ticket_id, self.in_ticket_name.text().strip() or None)
-        ts.set_pay_method(self.current_ticket_id, pay_method)
+        # ===== Recargar ticket y sidebar =====
+        self._preserve_table_focus = True
         try:
-            sid = ss.cobrar_ticket(self.current_ticket_id)
-            QMessageBox.information(
-                self,
-                "Venta",
-                f"Venta registrada (ID {sid}) — Pago: {pay_method}."
-            )
-            self.reload_tickets()
-            self.sale_completed.emit()   # avisamos al main para refrescar reportes
-            self.in_search.setFocus()
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            self.load_ticket(self.current_ticket_id)
+            self._refresh_tickets_sidebar()
+        finally:
+            self._preserve_table_focus = False
 
-    def _warmup_common_product(self):
-        """Crea/busca el Producto común al inicio para evitar la espera en el primer uso."""
-        try:
-            self._ensure_common_product_id()
-        except Exception:
-            pass
+        # ===== Volver a seleccionar la MISMA línea que se editó =====
+        for r in range(self.table.rowCount()):
+            cell = self.table.item(r, 0)
+            if cell and cell.data(Qt.UserRole) == line_id:
+                self.table.setCurrentCell(r, 1)  # columna Cant
+                break
+
 
     def _delete_current_row(self):
         """Elimina la línea actualmente seleccionada en la tabla (atajo Supr)."""
@@ -607,19 +352,23 @@ class POSView(QWidget):
         if line_id is None:
             return
 
+        # Eliminar ítem en BD
         ts.remove_item(int(line_id))
 
-        # Recargar manteniendo foco en la tabla
+        # Recargar manteniendo foco/selección coherente en la tabla
         self._preserve_table_focus = True
         self.load_ticket(self.current_ticket_id)
         self._preserve_table_focus = False
         self._refresh_tickets_sidebar()
 
-        # Seleccionar una fila coherente tras el borrado
+        # Seleccionar una fila lógica tras el borrado
         if self.table.rowCount() > 0:
             new_row = min(row, self.table.rowCount() - 1)
             self.table.setCurrentCell(new_row, 1)
             self.table.setFocus()
+        else:
+            # Si ya no quedan ítems en el ticket, devolvemos el foco al buscador
+            self.in_search.setFocus()
     
     
     def _focus_table(self):
@@ -644,7 +393,7 @@ class POSView(QWidget):
     def _change_current_qty(self, delta: int):
         """
         Cambia la cantidad de la fila actualmente seleccionada en la tabla
-        sumando 'delta' (por ejemplo +1 o -1), sin mover el foco fuera de la tabla.
+        sumando 'delta' (por ejemplo +1 o -1).
         """
         if not self.current_ticket_id:
             return
@@ -673,22 +422,23 @@ class POSView(QWidget):
             # No permitimos cantidades 0 o negativas
             return
 
-        # Actualizar en BD
+        # ===== Actualizar en BD =====
         ts.update_item_qty(int(line_id), new_qty)
 
-        # Recargar tabla manteniendo foco en la tabla
+        # ===== Recargar ticket y sidebar preservando la fila =====
         self._preserve_table_focus = True
-        self.load_ticket(self.current_ticket_id)
-        self._preserve_table_focus = False
+        try:
+            self.load_ticket(self.current_ticket_id)
+            self._refresh_tickets_sidebar()
+        finally:
+            self._preserve_table_focus = False
 
-        # Restaurar selección en la misma fila (o la última si se acortó la tabla)
+        # Mantener la misma fila seleccionada,
+        # PERO SIN cambiar el foco (si estaba en la búsqueda, sigue allí).
         if self.table.rowCount() > 0:
             new_row = min(row, self.table.rowCount() - 1)
             self.table.setCurrentCell(new_row, 1)
-            self.table.setFocus()
-
-        # Actualizar barra lateral
-        self._refresh_tickets_sidebar()
+            # OJO: aquí ya NO llamamos a self.table.setFocus()
 
 
     def eventFilter(self, obj, event):
@@ -696,11 +446,13 @@ class POSView(QWidget):
         Atajos de teclado:
         - En la TABLA:
             + y -  -> aumentan / disminuyen cantidad del ítem seleccionado.
+            Supr   -> elimina la línea seleccionada.
             ↑ y ↓  -> navegación normal (deja que QTableWidget la maneje).
         - En la BÚSQUEDA (in_search):
             + y -  -> aumentan / disminuyen cantidad del ítem seleccionado.
+            Supr   -> elimina la línea seleccionada.
             ↑ y ↓  -> cambian la fila seleccionada en la tabla, PERO
-                      sin mover el foco fuera de la casilla de búsqueda.
+                    sin mover el foco fuera de la casilla de búsqueda.
         """
         if event.type() == QEvent.KeyPress:
             key = event.key()
@@ -717,6 +469,11 @@ class POSView(QWidget):
                     self._change_current_qty(-1)
                     return True  # manejamos nosotros
 
+                # Suprimir: eliminar la línea seleccionada
+                if key == Qt.Key_Delete:
+                    self._delete_current_row()
+                    return True
+
                 # Flechas ↑/↓: dejamos que la tabla navegue normalmente
                 return super().eventFilter(obj, event)
 
@@ -729,6 +486,11 @@ class POSView(QWidget):
 
                 if key in (Qt.Key_Minus, Qt.Key_Underscore):
                     self._change_current_qty(-1)
+                    return True
+
+                # Suprimir: eliminar la línea seleccionada del ticket
+                if key == Qt.Key_Delete:
+                    self._delete_current_row()
                     return True
 
                 # Flecha ARRIBA: seleccionar ítem anterior en la tabla
@@ -783,6 +545,7 @@ class POSView(QWidget):
             self.table.setCurrentCell(row, 1)
 
 
+    # === Cobro ===
     def showEvent(self, event):
         """Cuando se muestra la pestaña POS, devuelve el foco a Buscar producto."""
         super().showEvent(event)

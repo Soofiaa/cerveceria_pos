@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QPushButton, QSpinBox, QMessageBox
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIntValidator
 
 class CommonProductDialog(QDialog):
     """
@@ -33,6 +34,7 @@ class CommonProductDialog(QDialog):
         price_row = QHBoxLayout()
         price_row.addWidget(QLabel("Precio (CLP):"))
         self.in_price = QLineEdit()
+        self.in_price.setValidator(QIntValidator(1, 10**9, self))  # <= SOLO NÚMEROS
         self.in_price.setPlaceholderText("Ej: 1.500")
         self.in_price.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         price_row.addWidget(self.in_price)

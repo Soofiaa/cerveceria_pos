@@ -2,7 +2,8 @@
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDateEdit,
-    QTableWidget, QHeaderView, QGroupBox, QGridLayout
+    QTableWidget, QHeaderView, QGroupBox, QGridLayout,
+    QAbstractItemView
 )
 
 from ui.reports import ReportActionsMixin
@@ -120,7 +121,7 @@ class ReportsView(QWidget, ReportActionsMixin):
         header.setSectionResizeMode(QHeaderView.Stretch)
         header.setStretchLastSection(True)
 
-        self.tbl_top.setEditTriggers(self.tbl_top.NoEditTriggers)
+        self.tbl_top.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tbl_top.verticalHeader().setDefaultSectionSize(32)
 
         layout.addLayout(top)

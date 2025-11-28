@@ -42,12 +42,14 @@ class ProductDialog(QDialog):
         form = QFormLayout()
 
         self.in_name = QLineEdit()
+
+        # === VALIDACIÓN NUMÉRICA CORRECTA ===
         self.in_sale = QLineEdit()
-        self.in_sale.setValidator(QIntValidator(0, 10**9))
+        self.in_sale.setValidator(QIntValidator(0, 10**9, self))
         self.in_sale.setPlaceholderText("Ej: 2200")
 
         self.in_purchase = QLineEdit()
-        self.in_purchase.setValidator(QIntValidator(0, 10**9))
+        self.in_purchase.setValidator(QIntValidator(0, 10**9, self))
         self.in_purchase.setPlaceholderText("Opcional. Ej: 1000")
 
         self.in_barcode = QLineEdit()

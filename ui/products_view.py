@@ -1,7 +1,7 @@
 # ui/products_view.py
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QTableWidget, QHeaderView
+    QTableWidget, QHeaderView, QAbstractItemView
 )
 
 from ui.products import ProductActionsMixin, ProductBackupMixin
@@ -75,9 +75,9 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         header.setSectionResizeMode(QHeaderView.Stretch)
         header.setStretchLastSection(True)
 
-        self.table.setSelectionBehavior(self.table.SelectRows)
-        self.table.setSelectionMode(self.table.SingleSelection)
-        self.table.setEditTriggers(self.table.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Filas más altas para hacer clic más fácil
         self.table.verticalHeader().setDefaultSectionSize(42)
