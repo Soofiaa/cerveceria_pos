@@ -38,8 +38,12 @@ class ProductDialog(QDialog):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
+        title_label = QLabel("Nuevo producto" if not is_edit else "Editar producto")
+        title_label.setObjectName("DialogTitle")      # <<--- se estiliza con el stylesheet
+
         group = QGroupBox("Datos del producto")
         form = QFormLayout()
+
 
         self.in_name = QLineEdit()
 
@@ -65,16 +69,21 @@ class ProductDialog(QDialog):
         form.addRow("Código de barras", self.in_barcode)
 
         group.setLayout(form)
+        layout.addWidget(title_label)   # <<--- NUEVA LÍNEA
         layout.addWidget(group)
 
         # Botones Guardar / Cancelar
         btns = QHBoxLayout()
         btns.addStretch()
+        
         self.btn_save = QPushButton("Guardar")
+        self.btn_save.setProperty("buttonType", "primary")   # <<--- NUEVA
         self.btn_cancel = QPushButton("Cancelar")
+        self.btn_cancel.setProperty("buttonType", "ghost")   # <<--- NUEVA
 
         self.btn_save.setMinimumHeight(36)
         self.btn_cancel.setMinimumHeight(36)
+
 
         btns.addWidget(self.btn_save)
         btns.addWidget(self.btn_cancel)

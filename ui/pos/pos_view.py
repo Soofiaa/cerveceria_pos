@@ -37,6 +37,7 @@ class POSView(
         # === Panel izquierdo: Tickets abiertos ===
         self.list_tickets = QListWidget()
         self.list_tickets.setObjectName("TicketList")
+
         self.btn_new = QPushButton("Nuevo")
         self.btn_new.setProperty("buttonType", "primary")
         self.btn_delete = QPushButton("Eliminar")
@@ -48,9 +49,10 @@ class POSView(
 
         left = QVBoxLayout()
         tickets_title = QLabel("Tickets abiertos")
-        tickets_title.setObjectName("SectionTitle")
+        tickets_title.setObjectName("SidebarTitle")   # <<--- CAMBIO AQUÍ
         left.addWidget(tickets_title)
         left.addWidget(self.list_tickets)
+
         row_left = QHBoxLayout()
         row_left.addWidget(self.btn_new)
         row_left.addWidget(self.btn_delete)
@@ -58,6 +60,7 @@ class POSView(
 
         left_widget = QWidget()
         left_widget.setObjectName("Sidebar")
+        self.list_tickets.setObjectName("TicketList")
         left_widget.setLayout(left)
 
         # === Panel derecho: datos del ticket + ítems ===

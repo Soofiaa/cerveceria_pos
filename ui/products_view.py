@@ -46,7 +46,9 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         self.in_search = QLineEdit()
         self.in_search.setPlaceholderText("Buscar por nombre o código de barras")
         self.btn_search = QPushButton("Buscar")
+        self.btn_search.setProperty("buttonType", "primary")   # <<--- NUEVA LÍNEA
         self.btn_search.clicked.connect(self.reload)
+
         search_row.addWidget(self.in_search)
         search_row.addWidget(self.btn_search)
         layout.addLayout(search_row)
