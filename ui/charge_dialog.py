@@ -201,12 +201,11 @@ class ChargeDialog(QDialog):
 
         self.selected_method = method
 
-
     def _recalc_change(self):
+        """Recalcula vuelto en base al texto actual."""
         val = parse_price(self.in_monto.text())
         chg = max(0, val - self.total)
         self.lbl_vuelto.setText(fmt_money(chg))
-
 
     def accept(self):
         """Valida datos y deja las propiedades listas para el caller."""
@@ -216,11 +215,12 @@ class ChargeDialog(QDialog):
         self.selected_method = method
 
         if method == "efectivo":
-            txt = (self.in_monto.text() or "").replace(".", "").replace(",", "")
-            try:
-                val = int(txt)
-            except Exception:
-                val = 0
+            # Usamos SIEMPRE parse_price para evitar problemas con '$', puntos, etc.
+            val = parse_price(self.in_monto.text())
+
+            if val <= 0:
+                QMessageBox.warning(self, "Cobrar", "Ingresa un monto recibido válido.")
+                return
 
             if val < self.total:
                 QMessageBox.warning(self, "Cobrar", "El monto recibido es menor al total.")
@@ -236,8 +236,8 @@ class ChargeDialog(QDialog):
 
         super().accept()
 
-    
     def _format_monto(self):
+        """Formatea el monto con $ y puntos mientras se escribe."""
         txt = self.in_monto.text()
 
         # quitar $ visual antes de parsear
@@ -255,4 +255,3 @@ class ChargeDialog(QDialog):
             self.in_monto.setText(formatted)
             self.in_monto.blockSignals(False)
             self.in_monto.setCursorPosition(len(formatted))
-

@@ -266,3 +266,9 @@ class ReportsView(QWidget, ReportActionsMixin):
             self.btn_year, self.btn_run, self.btn_export
         ]:
             btn.setMinimumHeight(34)
+
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Cada vez que se entra a la pestaña Reportes, refrescamos datos
+        self._set_today()

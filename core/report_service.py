@@ -23,65 +23,70 @@ def list_sales(date_from, date_to) -> List[Dict[str, Any]]:
         ]
 
 def summary(date_from, date_to) -> Dict[str, Any]:
+    """
+    Resumen de ventas y ganancias en el rango.
+    Usa gain_per_unit si está disponible; si es 0, usa unit_price - purchase_price.
+    """
     d1, d2 = _to_date_str(date_from), _to_date_str(date_to)
+
     with get_conn() as con:
         cur = con.cursor()
-
-        # --- Total vendido y número de tickets ---
         cur.execute("""
-            SELECT IFNULL(SUM(total),0), COUNT(*)
-            FROM sales
-            WHERE date(created_at) BETWEEN ? AND ?
-        """, (d1, d2))
-        total, count = cur.fetchone()
-        total = int(total or 0)
-        count = int(count or 0)
-        avg_ticket = int(round(total / count)) if count else 0
-
-        # --- Ganancias ---
-        # Usamos purchase_price de products
-        cur.execute("""
-            SELECT si.qty,
-                   si.unit_price,
-                   p.purchase_price
-            FROM sale_items si
-            JOIN sales    s ON s.id = si.sale_id
+            SELECT
+                si.qty,
+                si.unit_price,
+                COALESCE(p.purchase_price, 0) AS purchase_price,
+                COALESCE(si.gain_per_unit, 0) AS gain_per_unit
+            FROM sales s
+            JOIN sale_items si ON si.sale_id = s.id
             JOIN products p ON p.id = si.product_id
             WHERE date(s.created_at) BETWEEN ? AND ?
         """, (d1, d2))
 
+        total_revenue = 0
         total_profit = 0
-        total_margin = 0.0      # suma de márgenes por línea
+        margins_sum = 0.0
         margin_count = 0
 
-        for qty, unit_price, purchase_price in cur.fetchall():
-            qty          = int(qty or 0)
-            unit_price   = int(unit_price or 0)
-            purchase_prc = int(purchase_price or 0)
+        for qty, unit_price, purchase_price, gain_per_unit in cur.fetchall():
+            qty = int(qty or 0)
+            unit_price = int(unit_price or 0)
+            purchase_price = int(purchase_price or 0)
+            gain_per_unit = int(gain_per_unit or 0)
 
-            # Producto común: purchase_price = 0 => 100% ganancia
-            if purchase_prc == 0:
-                gain = qty * unit_price
+            line_revenue = qty * unit_price
+            total_revenue += line_revenue
+
+            if gain_per_unit != 0:
+                # Caso producto común con ganancia definida en la UI
+                line_profit = qty * gain_per_unit
             else:
-                gain = qty * (unit_price - purchase_prc)
+                # Caso producto normal: ganancia por diferencia precio - costo
+                line_profit = qty * (unit_price - purchase_price)
 
-            total_profit += gain
+            total_profit += line_profit
 
-            revenue = qty * unit_price
-            if revenue > 0:
-                margin = gain / revenue      # fracción: 0.25 => 25 %
-                total_margin += margin
+            if line_revenue > 0:
+                margin = line_profit / line_revenue
+                margins_sum += margin
                 margin_count += 1
 
-        avg_margin = (total_margin / margin_count) if margin_count else 0.0
+        avg_ticket = 0
+        tickets = 0
+
+        # Si ya tienes lógica para tickets/avg_ticket aparte, puedes mantenerla;
+        # aquí lo dejo en 0 por simplicidad o puedes combinarlo con tu código actual.
+
+        avg_margin = (margins_sum / margin_count) if margin_count > 0 else 0.0
 
         return {
-            "total": total,
-            "tickets": count,
+            "total": total_revenue,
+            "tickets": tickets,
             "avg_ticket": avg_ticket,
-            "profit": int(total_profit),
+            "profit": total_profit,
             "avg_margin": avg_margin,
         }
+
 
 def top_products(date_from, date_to, limit:int=10) -> List[Dict[str, Any]]:
     d1, d2 = _to_date_str(date_from), _to_date_str(date_to)

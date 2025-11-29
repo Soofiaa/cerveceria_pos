@@ -3,11 +3,12 @@ from typing import List, Dict, Any, Optional
 from core.db_manager import get_conn
 from core.time_utils import now_local_str
 
+
 def cobrar_ticket(ticket_id: int) -> int:
     """
     Convierte un ticket abierto en una venta:
     - Crea cabecera en sales (subtotal=SUM, total=subtotal, pay_method del ticket, status=pagada, created_at local)
-    - Crea sale_items con qty, unit_price y line_total
+    - Crea sale_items con qty, unit_price, line_total y gain_per_unit
     - Borra ticket e ítems abiertos
     Devuelve sale_id.
     """
@@ -24,9 +25,9 @@ def cobrar_ticket(ticket_id: int) -> int:
             raise ValueError("Ticket no existe.")
         _, pay_method, _ = t
 
-        # Ítems del ticket
+        # Ítems del ticket (incluyendo gain_per_unit)
         cur.execute("""
-            SELECT i.product_id, i.qty, i.unit_price
+            SELECT i.product_id, i.qty, i.unit_price, i.gain_per_unit
             FROM open_ticket_items i
             WHERE i.ticket_id=?
         """, (ticket_id,))
@@ -51,15 +52,19 @@ def cobrar_ticket(ticket_id: int) -> int:
         """, (subtotal, total, (pay_method or "efectivo"), created_at))
         sale_id = cur.lastrowid
 
-        # Insertar detalle
-        for (product_id, qty, unit_price) in items:
-            line_total = int(qty) * int(unit_price)
-            cur.execute("""
-                INSERT INTO sale_items (sale_id, product_id, qty, unit_price, line_total)
-                VALUES (?, ?, ?, ?, ?)
-            """, (sale_id, product_id, qty, unit_price, line_total))
+        # Insertar detalle (incluyendo gain_per_unit)
+        for (product_id, qty, unit_price, gain_per_unit) in items:
+            qty = int(qty)
+            unit_price = int(unit_price)
+            gain_per_unit = int(gain_per_unit or 0)
+            line_total = qty * unit_price
 
-        # Borrar ticket abierto (ON DELETE CASCADE borra líneas)
+            cur.execute("""
+                INSERT INTO sale_items (sale_id, product_id, qty, unit_price, line_total, gain_per_unit)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (sale_id, product_id, qty, unit_price, line_total, gain_per_unit))
+
+        # Borrar ticket abierto (ON DELETE CASCADE borra líneas de open_ticket_items)
         cur.execute("DELETE FROM open_tickets WHERE id=?", (ticket_id,))
 
         con.commit()
@@ -99,6 +104,7 @@ def ventas_del_dia(fecha_iso: Optional[str] = None) -> List[Dict[str, Any]]:
             "status": r[5],
         } for r in rows]
 
+
 def items_de_venta(sale_id: int) -> List[Dict[str, Any]]:
     with get_conn() as con:
         cur = con.cursor()
@@ -117,6 +123,7 @@ def items_de_venta(sale_id: int) -> List[Dict[str, Any]]:
             "unit_price": r[3],
             "line_total": r[4],
         } for r in rows]
+
 
 def ventas_por_rango(desde_iso: str, hasta_iso: str) -> List[Dict[str, Any]]:
     with get_conn() as con:

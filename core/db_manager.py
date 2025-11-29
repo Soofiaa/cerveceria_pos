@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS open_ticket_items (
   product_id INTEGER NOT NULL,
   qty INTEGER NOT NULL,
   unit_price INTEGER NOT NULL,
+  display_name TEXT,
   FOREIGN KEY(ticket_id) REFERENCES open_tickets(id) ON DELETE CASCADE,
   FOREIGN KEY(product_id) REFERENCES products(id)
 );
@@ -147,6 +148,39 @@ def migrate_sales_add_created_at_if_missing():
         # 3) Trigger e índice
         _ensure_sales_created_at_trigger_and_index(con)
         con.commit()
+        
+        
+def ensure_common_product_exists() -> int:
+    """
+    Crea un producto 'Producto común' si no existe y devuelve su ID.
+    Se usa para los ítems de producto común en los tickets.
+    """
+    with get_conn() as con:
+        cur = con.cursor()
+        cur.execute("SELECT id FROM products WHERE name='Producto común' LIMIT 1;")
+        row = cur.fetchone()
+        if row:
+            return row[0]
+        
+        # Si no existe, lo creamos con precios 0 (el unit_price real se guarda en el ticket)
+        cur.execute("""
+            INSERT INTO products (name, sale_price, purchase_price, barcode)
+            VALUES ('Producto común', 0, 0, NULL)
+        """)
+        con.commit()
+        return cur.lastrowid
+
+def migrate_open_ticket_items_add_display_name_if_missing():
+    """
+    Añade la columna display_name a open_ticket_items si no existe.
+    No toca nada más (ni constraints ni datos).
+    """
+    with get_conn() as con:
+        if _column_exists(con, "open_ticket_items", "display_name"):
+            return
+
+        con.execute("ALTER TABLE open_ticket_items ADD COLUMN display_name TEXT;")
+        con.commit()
 
 def _ensure_sales_created_at_trigger_and_index(con):
     cur = con.cursor()
@@ -163,6 +197,25 @@ def _ensure_sales_created_at_trigger_and_index(con):
     # Índice para consultas por created_at
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sales_created_at ON sales(created_at);")
 
+
+def migrate_open_ticket_items_add_gain_per_unit_if_missing():
+    """Añade gain_per_unit a open_ticket_items si no existe."""
+    with get_conn() as con:
+        if _column_exists(con, "open_ticket_items", "gain_per_unit"):
+            return
+        con.execute("ALTER TABLE open_ticket_items ADD COLUMN gain_per_unit INTEGER NOT NULL DEFAULT 0;")
+        con.commit()
+
+
+def migrate_sale_items_add_gain_per_unit_if_missing():
+    """Añade gain_per_unit a sale_items si no existe."""
+    with get_conn() as con:
+        if _column_exists(con, "sale_items", "gain_per_unit"):
+            return
+        con.execute("ALTER TABLE sale_items ADD COLUMN gain_per_unit INTEGER NOT NULL DEFAULT 0;")
+        con.commit()
+
+
 def bootstrap():
     # Crear estructura base
     with get_conn() as con:
@@ -171,3 +224,7 @@ def bootstrap():
     # Migraciones idempotentes
     migrate_products_strip_format_active()
     migrate_sales_add_created_at_if_missing()
+    migrate_open_ticket_items_add_display_name_if_missing()
+    migrate_open_ticket_items_add_gain_per_unit_if_missing()
+    migrate_sale_items_add_gain_per_unit_if_missing()
+    ensure_common_product_exists()

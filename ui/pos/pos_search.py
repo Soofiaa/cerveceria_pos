@@ -64,7 +64,7 @@ class POSSearchMixin:
 
     # === Ítems ===
     def add_common_item_dialog(self):
-        """Abre el diálogo de 'Producto común' y agrega la línea al ticket."""
+        """Abre el diálogo de producto común y agrega la línea al ticket."""
         if not self.current_ticket_id:
             self.new_ticket()
 
@@ -72,24 +72,38 @@ class POSSearchMixin:
         if dlg.exec() != QDialog.Accepted:
             return
 
-        unit_price = dlg.price_value
-        qty = dlg.qty_value
-        if unit_price is None or unit_price <= 0 or qty <= 0:
-            QMessageBox.warning(self, "Producto común", "Datos inválidos.")
-            return
+        data = dlg.get_data()
+        name = data["name"]
+        qty = data["qty"]
+        unit_price = data["unit_price"]
+        gain_type = data["gain_type"]      # "%" o "$"
+        gain_value = data["gain_value"]    # int o None
 
-        pid = self._ensure_common_product_id()
-        ts.add_item(self.current_ticket_id, pid, qty=qty, unit_price=unit_price)
+        # ==== Calcular ganancia por unidad (gain_per_unit) ====
+        # Regla:
+        # - Si gain_value es None -> 0 (no afecta reportes)
+        # - Si gain_type == "%" -> unit_price * (gain_value/100)
+        # - Si gain_type == "$" -> gain_value directo
+        if gain_value is None:
+            gain_per_unit = 0
+        else:
+            if gain_type == "%":
+                gain_per_unit = int(unit_price * (gain_value / 100.0))
+            else:  # "$"
+                gain_per_unit = int(gain_value)
 
-        # Recargar tabla del ticket y actualizar panel izquierdo
+        # Guardar línea de producto común en el ticket
+        ts.add_common_item(
+            ticket_id=self.current_ticket_id,
+            name=name,
+            qty=qty,
+            unit_price=unit_price,
+            gain_per_unit=gain_per_unit,
+        )
+
+        # Recargar tabla
         self.load_ticket(self.current_ticket_id)
-        self._refresh_tickets_sidebar()
-
-        # Limpiar completamente la casilla de búsqueda
-        self.in_search.clear()
-        self.selected_product_id = None
-        self.update_suggestions("")
-        self.in_search.setFocus()
+    
 
     def add_item_by_search(self):
         """Agrega producto por nombre/código: cantidad 1, precio del producto."""

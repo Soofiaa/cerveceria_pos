@@ -6,7 +6,8 @@ from core import ticket_service as ts
 from core import sales_service as ss
 from core.utils_format import fmt_money
 from ui.charge_dialog import ChargeDialog
-
+from ui.common_product_dialog import CommonProductDialog
+from PySide6.QtWidgets import QDialog
 
 class POSActionsMixin:
     """
@@ -30,6 +31,7 @@ class POSActionsMixin:
           * self.sale_completed (Signal)
     """
 
+    
     # === Totales ===
     def refresh_totals(self):
         """Recalcula y actualiza el total del ticket actual en la etiqueta."""
@@ -92,18 +94,36 @@ class POSActionsMixin:
 
         try:
             sid = ss.cobrar_ticket(self.current_ticket_id)
-            QMessageBox.information(
-                self,
-                "Venta",
-                f"Venta registrada (ID {sid}) — Pago: {pay_method}."
-            )
 
             # Recargar tickets abiertos y notificar al resto de la app
             self.reload_tickets(initial=True)
             self.sale_completed.emit()  # el MainWindow puede escuchar esto
-
+            
             # Volvemos al buscador
             self.in_search.setFocus()
 
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
+
+
+    def add_common_item_dialog(self):
+            """Abre el diálogo de producto común y agrega la línea al ticket."""
+            if not self.current_ticket_id:
+                # Crear ticket si no hay
+                self.new_ticket()
+
+            dlg = CommonProductDialog(self)
+            if dlg.exec() != QDialog.Accepted:
+                return
+
+            data = dlg.get_data()
+            ts.add_common_item(
+                ticket_id=self.current_ticket_id,
+                name=data["name"],
+                qty=data["qty"],
+                unit_price=data["unit_price"],
+            )
+
+            # Recargar tabla y totales
+            self.load_ticket(self.current_ticket_id)
+            self._refresh_tickets_sidebar()

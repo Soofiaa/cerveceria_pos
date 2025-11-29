@@ -1,6 +1,6 @@
 # core/ticket_service.py
 from typing import List, Dict, Optional, Any, Tuple
-from core.db_manager import get_conn
+from core.db_manager import get_conn, ensure_common_product_exists
 from core.time_utils import now_local_str
 
 # -------- Helpers internos --------
@@ -107,29 +107,36 @@ def list_items(ticket_id: int) -> List[Dict[str, Any]]:
     with get_conn() as con:
         cur = con.cursor()
         cur.execute("""
-            SELECT i.id, i.product_id, p.name, i.qty, i.unit_price
-              FROM open_ticket_items i
-              JOIN products p ON p.id = i.product_id
-             WHERE i.ticket_id=?
-          ORDER BY i.id ASC
+            SELECT 
+                i.id,
+                i.product_id,
+                COALESCE(i.display_name, p.name) AS final_name,
+                i.qty,
+                i.unit_price
+            FROM open_ticket_items i
+            JOIN products p ON p.id = i.product_id
+            WHERE i.ticket_id=?
+            ORDER BY i.id ASC
         """, (ticket_id,))
         rows = cur.fetchall()
         result = []
         for r in rows:
-            pid = r[1]
-            name = r[2]
+            item_id = r[0]
+            product_id = r[1]
+            name = r[2]        # nombre final (producto normal o común)
             qty = r[3]
             unit = r[4]
             result.append({
-                "id": r[0],
+                "id": item_id,
                 "ticket_id": ticket_id,
-                "product_id": pid,
+                "product_id": product_id,
                 "product_name": name,
                 "qty": qty,
                 "unit_price": unit,
                 "line_total": _line_total(qty, unit),
             })
         return result
+
 
 def add_item(ticket_id: int, product_id: int, qty: int, unit_price: int) -> int:
     """Si existe línea del mismo producto y mismo precio, acumula cantidad; si no, crea línea nueva."""
@@ -167,6 +174,46 @@ def add_item(ticket_id: int, product_id: int, qty: int, unit_price: int) -> int:
         _recalc_ticket_totals(con, ticket_id)
         con.commit()
         return result_id
+
+
+def add_common_item(
+    ticket_id: int,
+    name: Optional[str],
+    qty: int,
+    unit_price: int,
+    gain_per_unit: int = 0,
+) -> int:
+    """
+    Agrega un producto común usando el product_id especial 'Producto común'.
+    - gain_per_unit: ganancia por unidad (ya calculada en la UI).
+    """
+    qty = int(qty)
+    unit_price = int(unit_price)
+    gain_per_unit = int(gain_per_unit)
+
+    if qty <= 0 or unit_price <= 0:
+        raise ValueError("Cantidad y precio deben ser positivos.")
+
+    common_product_id = ensure_common_product_exists()
+
+    if name and name.strip():
+        display_name = f"{name.strip()} (Producto común)"
+    else:
+        display_name = "Producto común"
+
+    with get_conn() as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO open_ticket_items
+                (ticket_id, product_id, qty, unit_price, display_name, gain_per_unit)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (ticket_id, common_product_id, qty, unit_price, display_name, gain_per_unit))
+        line_id = cur.lastrowid
+
+        _recalc_ticket_totals(con, ticket_id)
+        con.commit()
+        return line_id
+
 
 def remove_item(item_id: int) -> None:
     with get_conn() as con:
