@@ -123,3 +123,34 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         # Carga inicial
         self.reload()
         self._on_selection_changed()  # para desactivar Quitar al inicio
+
+    
+    def _hide_common_product_rows(self):
+        """
+        Elimina de la tabla las filas cuyo nombre sea 'Producto común'.
+        No borra nada de la BD, solo de la vista.
+        """
+        name_col = 0  # columna Nombre
+        row = self.table.rowCount() - 1
+
+        while row >= 0:
+            item = self.table.item(row, name_col)
+            if item:
+                nombre = item.text().strip().lower()
+                if nombre == "producto común":
+                    self.table.removeRow(row)
+            row -= 1
+            
+    
+    def reload(self):
+        """
+        Recarga la tabla de productos usando la lógica del mixin
+        y luego oculta 'Producto común' de la vista.
+        """
+        # Usamos la implementación original del mixin:
+        from ui.products import ProductActionsMixin
+        ProductActionsMixin.reload(self)
+
+        # Después de llenar la tabla, ocultamos el Producto común:
+        self._hide_common_product_rows()
+

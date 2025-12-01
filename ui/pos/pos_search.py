@@ -55,12 +55,17 @@ class POSSearchMixin:
 
         self.suggest_model.setStringList(items)
 
-    def on_suggestion_chosen(self, chosen_text: str):
-        """Cuando el usuario elige una sugerencia del autocompletar."""
-        self.selected_product_id = self.suggest_map.get(chosen_text)
 
-        # Dejamos que el QCompleter termine y luego agregamos + limpiamos.
-        QTimer.singleShot(0, self.add_item_by_search)
+    def on_suggestion_chosen(self, chosen_text: str):
+        """
+        Cuando el usuario elige una sugerencia del autocompletar.
+
+        Solo marcamos el producto seleccionado; el agregado real lo
+        hace add_item_by_search cuando el usuario presiona Enter.
+        """
+        self.selected_product_id = self.suggest_map.get(chosen_text)
+        # Importante: NO llamamos aquí a add_item_by_search
+
 
     # === Ítems ===
     def add_common_item_dialog(self):

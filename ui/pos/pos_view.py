@@ -14,6 +14,7 @@ from ui.pos.pos_search import POSSearchMixin
 from ui.pos.pos_tickets import POSTicketsMixin
 from ui.pos.pos_actions import POSActionsMixin
 from ui.pos.pos_widgets import IntSpinDelegate, SearchLine
+from ui.daily_sales_dialog import DailySalesDialog
 
 
 class POSView(
@@ -76,7 +77,7 @@ class POSView(
         top_right.addWidget(self.in_ticket_name)
         top_right.addWidget(self.btn_rename)
 
-        # --- Búsqueda + producto común ---
+                # --- Búsqueda de productos ---
         self.in_search = SearchLine()
         self.in_search.setPlaceholderText("Buscar producto o código (Enter para agregar)")
 
@@ -95,14 +96,24 @@ class POSView(
         self.completer.activated.connect(self.on_suggestion_chosen)
         self.in_search.returnPressed.connect(self.add_item_by_search)
 
+        # --- Botones bajo la búsqueda: Producto común + Limpiar ticket ---
         self.btn_add_common = QPushButton("Agregar producto común")
         self.btn_add_common.setProperty("buttonType", "ghost")
         self.btn_add_common.clicked.connect(self.add_common_item_dialog)
 
-        add_row = QHBoxLayout()
-        add_row.addWidget(self.in_search, 1)
-        add_row.addStretch()
-        add_row.addWidget(self.btn_add_common)
+        self.btn_clear = QPushButton("Limpiar ticket")
+        self.btn_clear.setProperty("buttonType", "ghost")
+        self.btn_clear.clicked.connect(self.clear_ticket_items)
+
+        # Fila solo con la casilla de búsqueda
+        search_row = QHBoxLayout()
+        search_row.addWidget(self.in_search, 1)
+
+        # Fila bajo la búsqueda con los botones
+        actions_row = QHBoxLayout()
+        actions_row.addWidget(self.btn_add_common)
+        actions_row.addStretch()
+        actions_row.addWidget(self.btn_clear)
 
         # === Tabla: Producto | Cant | P.Unit | Total | ✕ ===
         self.table = QTableWidget(0, 5)
@@ -137,16 +148,18 @@ class POSView(
         self.lbl_totals.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.lbl_totals.setMinimumHeight(70)
 
-        self.btn_clear = QPushButton("Limpiar ticket")
-        self.btn_clear.setProperty("buttonType", "ghost")
+        # Botón de "Ventas del día": sólido, que se note como botón
+        self.btn_daily_sales = QPushButton("Ventas del día")
+        self.btn_daily_sales.setProperty("buttonType", "primary")
+        self.btn_daily_sales.clicked.connect(self.show_daily_sales_dialog)
+
+        # Botón de cobro
         self.btn_charge = QPushButton("F12 - COBRAR")
         self.btn_charge.setProperty("buttonType", "primary")
-
-        self.btn_clear.clicked.connect(self.clear_ticket_items)
         self.btn_charge.clicked.connect(self.charge_ticket)
 
         bottom = QHBoxLayout()
-        bottom.addWidget(self.btn_clear)
+        bottom.addWidget(self.btn_daily_sales)
         bottom.addStretch()
         bottom.addWidget(self.btn_charge)
 
@@ -154,10 +167,12 @@ class POSView(
         right.setContentsMargins(6, 6, 6, 6)
         right.setSpacing(6)
         right.addLayout(top_right)
-        right.addLayout(add_row)
+        right.addLayout(search_row)
+        right.addLayout(actions_row)
         right.addWidget(self.table)
         right.addWidget(self.lbl_totals)
         right.addLayout(bottom)
+
 
         right_widget = QWidget()
         right_widget.setObjectName("ContentArea")
@@ -180,7 +195,8 @@ class POSView(
         self.in_search.setMinimumHeight(32)
         for btn in [
             self.btn_new, self.btn_delete, self.btn_rename,
-            self.btn_add_common, self.btn_clear, self.btn_charge
+            self.btn_add_common, self.btn_clear,
+            self.btn_daily_sales, self.btn_charge
         ]:
             btn.setMinimumHeight(32)
 
@@ -212,7 +228,8 @@ class POSView(
         for btn in [
             self.btn_new, self.btn_delete,
             self.btn_rename, self.btn_add_common,
-            self.btn_clear, self.btn_charge
+            self.btn_clear, self.btn_daily_sales,
+            self.btn_charge
         ]:
             btn.setMinimumHeight(38)
 
@@ -543,6 +560,12 @@ class POSView(
             self.table.setCurrentCell(row, 1)
 
 
+    def show_daily_sales_dialog(self):
+        """Abre la subventana con las ventas del día."""
+        dlg = DailySalesDialog(self)
+        dlg.exec()
+
+    
     # === Cobro ===
     def showEvent(self, event):
         """Cuando se muestra la pestaña POS, devuelve el foco a Buscar producto."""
