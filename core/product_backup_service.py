@@ -8,7 +8,7 @@ def export_products_csv(path: str):
     """
     Exporta la tabla de productos a un CSV.
     Formato columnas:
-        Nombre;PrecioVenta;PrecioCompra;CodigoBarra
+        Nombre;PrecioVenta;PrecioCompra;CodigoBarra;Stock;StockMinimo
     """
     # Leemos los productos desde la BD
     with get_conn() as con:
@@ -17,7 +17,9 @@ def export_products_csv(path: str):
             SELECT name,
                    COALESCE(sale_price, 0),
                    COALESCE(purchase_price, 0),
-                   COALESCE(barcode, '')
+                   COALESCE(barcode, ''),
+                   COALESCE(stock, 0),
+                   COALESCE(min_stock, 0)
             FROM products
             ORDER BY name COLLATE NOCASE
         """)
@@ -26,20 +28,27 @@ def export_products_csv(path: str):
     # Escribimos CSV en codificación amigable para Excel
     with open(path, "w", newline="", encoding="latin-1") as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(["Nombre", "PrecioVenta", "PrecioCompra", "CodigoBarra"])
-        for name, sale_price, purchase_price, barcode in rows:
+        writer.writerow(["Nombre", "PrecioVenta", "PrecioCompra", "CodigoBarra", "Stock", "StockMinimo"])
+        for name, sale_price, purchase_price, barcode, stock, min_stock in rows:
             writer.writerow([
                 name or "",
                 int(sale_price or 0),
                 int(purchase_price or 0),
-                barcode or ""
+                barcode or "",
+                int(stock or 0),
+                int(min_stock or 0),
             ])
 
 
 def import_products_csv(path: str):
     """
     Importa productos desde un CSV con columnas:
-        Nombre;PrecioVenta;PrecioCompra;CodigoBarra
+        Nombre;PrecioVenta;PrecioCompra;CodigoBarra;Stock;StockMinimo
+
+    Las columnas Stock y StockMinimo son opcionales (compatibilidad con
+    archivos exportados antes de agregar inventario). Si no vienen en el
+    archivo, el stock existente no se modifica al actualizar, y los
+    productos nuevos se crean con stock 0.
 
     Regla:
       - Si tiene CódigoBarra, se busca por código. Si existe, se ACTUALIZA.
@@ -89,6 +98,8 @@ def import_products_csv(path: str):
             sale_price = 0
             purchase_price = 0
             barcode = None
+            stock = None
+            min_stock = None
 
             try:
                 if len(row) > 1:
@@ -98,6 +109,10 @@ def import_products_csv(path: str):
                 if len(row) > 3:
                     bc = (row[3] or "").strip()
                     barcode = bc if bc else None
+                if len(row) > 4:
+                    stock = int((row[4] or "0").strip() or 0)
+                if len(row) > 5:
+                    min_stock = int((row[5] or "0").strip() or 0)
             except Exception:
                 # si hay valores no numéricos, se salta la fila
                 skipped += 1
@@ -119,19 +134,24 @@ def import_products_csv(path: str):
                     product_id = r[0]
 
             if product_id:
-                # Actualizar
-                cur.execute("""
-                    UPDATE products
-                    SET name = ?, sale_price = ?, purchase_price = ?, barcode = ?
-                    WHERE id = ?
-                """, (name, sale_price, purchase_price, barcode, product_id))
+                # Actualizar (el stock solo se toca si el CSV trae esas columnas)
+                sets = ["name = ?", "sale_price = ?", "purchase_price = ?", "barcode = ?"]
+                values = [name, sale_price, purchase_price, barcode]
+                if stock is not None:
+                    sets.append("stock = ?")
+                    values.append(stock)
+                if min_stock is not None:
+                    sets.append("min_stock = ?")
+                    values.append(min_stock)
+                values.append(product_id)
+                cur.execute(f"UPDATE products SET {', '.join(sets)} WHERE id = ?", values)
                 updated += 1
             else:
                 # Crear nuevo
                 cur.execute("""
-                    INSERT INTO products (name, sale_price, purchase_price, barcode)
-                    VALUES (?, ?, ?, ?)
-                """, (name, sale_price, purchase_price, barcode))
+                    INSERT INTO products (name, sale_price, purchase_price, barcode, stock, min_stock)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (name, sale_price, purchase_price, barcode, stock or 0, min_stock or 0))
                 created += 1
 
         con.commit()

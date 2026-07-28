@@ -17,7 +17,10 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT NOT NULL,
   sale_price INTEGER NOT NULL,
   purchase_price INTEGER NOT NULL DEFAULT 0,
-  barcode TEXT UNIQUE
+  barcode TEXT UNIQUE,
+  stock INTEGER NOT NULL DEFAULT 0,
+  min_stock INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS open_tickets (
@@ -216,6 +219,30 @@ def migrate_sale_items_add_gain_per_unit_if_missing():
         con.commit()
 
 
+def migrate_products_add_stock_columns_if_missing():
+    """Añade 'stock' y 'min_stock' a products si no existen."""
+    with get_conn() as con:
+        if not _column_exists(con, "products", "stock"):
+            con.execute("ALTER TABLE products ADD COLUMN stock INTEGER NOT NULL DEFAULT 0;")
+        if not _column_exists(con, "products", "min_stock"):
+            con.execute("ALTER TABLE products ADD COLUMN min_stock INTEGER NOT NULL DEFAULT 0;")
+        con.commit()
+
+
+def migrate_products_add_is_active_if_missing():
+    """
+    Añade 'is_active' a products si no existe.
+    Se usa para dar de baja lógicamente un producto (desactivar_producto en
+    product_service.py) en vez de borrarlo físicamente, así se conserva la
+    trazabilidad de ventas históricas que lo referencian.
+    """
+    with get_conn() as con:
+        if _column_exists(con, "products", "is_active"):
+            return
+        con.execute("ALTER TABLE products ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;")
+        con.commit()
+
+
 def bootstrap():
     # Crear estructura base
     with get_conn() as con:
@@ -227,4 +254,6 @@ def bootstrap():
     migrate_open_ticket_items_add_display_name_if_missing()
     migrate_open_ticket_items_add_gain_per_unit_if_missing()
     migrate_sale_items_add_gain_per_unit_if_missing()
+    migrate_products_add_stock_columns_if_missing()
+    migrate_products_add_is_active_if_missing()
     ensure_common_product_exists()

@@ -331,6 +331,11 @@ class POSView(
             self.load_ticket(self.current_ticket_id)
             return
 
+        # Capturamos el producto de la línea antes de actualizar (por si se elimina)
+        line_before = ts.get_item(line_id)
+        product_id = line_before["product_id"] if line_before else None
+        old_qty = int(line_before["qty"]) if line_before else 0
+
         # ===== Actualizar en BD =====
         ts.update_item_qty(line_id, new_qty)
 
@@ -348,6 +353,10 @@ class POSView(
             if cell and cell.data(Qt.UserRole) == line_id:
                 self.table.setCurrentCell(r, 1)  # columna Cant
                 break
+
+        # Avisar si el producto queda con stock bajo (solo al aumentar cantidad)
+        if new_qty > old_qty:
+            self._maybe_alert_low_stock(product_id)
 
 
     def _delete_current_row(self):
@@ -437,6 +446,10 @@ class POSView(
             # No permitimos cantidades 0 o negativas
             return
 
+        # Capturamos el producto de la línea antes de actualizar
+        line_before = ts.get_item(int(line_id))
+        product_id = line_before["product_id"] if line_before else None
+
         # ===== Actualizar en BD =====
         ts.update_item_qty(int(line_id), new_qty)
 
@@ -454,6 +467,10 @@ class POSView(
             new_row = min(row, self.table.rowCount() - 1)
             self.table.setCurrentCell(new_row, 1)
             # OJO: aquí ya NO llamamos a self.table.setFocus()
+
+        # Avisar si el producto queda con stock bajo (solo al aumentar cantidad)
+        if delta > 0:
+            self._maybe_alert_low_stock(product_id)
 
 
     def eventFilter(self, obj, event):

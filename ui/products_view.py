@@ -36,7 +36,8 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         hint = QLabel(
             "Usa \"Agregar producto\" para crear uno nuevo.\n"
             "Haz doble clic en un producto para modificarlo.\n"
-            "Haz un clic en un producto y usa \"Quitar producto\" para eliminarlo."
+            "Haz un clic en un producto y usa \"Quitar producto\" para eliminarlo.\n"
+            "Las filas resaltadas en naranja indican stock bajo (según la alerta configurada)."
         )
         hint.setObjectName("HintLabel")
         layout.addWidget(hint)
@@ -54,9 +55,9 @@ class ProductsView(QWidget, ProductActionsMixin, ProductBackupMixin):
         layout.addLayout(search_row)
 
         # --- Tabla de productos ---
-        self.table = QTableWidget(0, 4)
+        self.table = QTableWidget(0, 5)
         self.table.setAlternatingRowColors(True)
-        self.table.setHorizontalHeaderLabels(["Nombre", "Venta", "Compra", "Código"])
+        self.table.setHorizontalHeaderLabels(["Nombre", "Venta", "Compra", "Stock", "Código"])
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)

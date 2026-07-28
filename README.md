@@ -42,7 +42,7 @@ Su arquitectura modular facilita el mantenimiento, mejora la escalabilidad y per
 ### Reportes
 - Reporte diario de ventas
 - Reportes por rango de fechas
-- Exportación de datos a Excel
+- Exportación de datos a CSV
 - Calendario personalizado sin botones de incremento
 
 ### Base de Datos
@@ -104,3 +104,29 @@ venv\Scripts\activate
 pip install -r requirements.txt
 python main.py
 ```
+
+---
+
+## Cobertura de tests y decisiones de alcance
+
+Los tests (`pytest`, ver `requirements-dev.txt`) se concentraron en la lógica de negocio de `core/` — cobro, integridad de datos y reportes — en vez de perseguir cobertura exhaustiva. En un proyecto de este tamaño la cobertura total no es el objetivo: elegir bien qué merece test, sí lo es. Cada área se evaluó por el costo real de que falle en silencio, no por cuánto código tiene.
+
+### Área testeada y por qué
+
+| Área testeada | Por qué |
+|---|---|
+| `sales_service.cobrar_ticket()` | Es el punto donde un bug afecta directamente el dinero registrado: convierte un ticket en una venta pagada e irreversible. |
+| `product_service` (`delete_product`, `desactivar_producto`, `list_products`) | Es la capa que decide si se puede borrar o dar de baja un producto sin romper el historial de ventas ya cobradas (motivo original de la Fase 3). |
+| `report_service.summary()` | Alimenta directamente los reportes que ve el dueño del negocio (ingresos, ganancia, ticket promedio); un error ahí no se nota hasta que ya se tomó una decisión mal informada. |
+| `ticket_service` (`add_item`, `update_item_qty`, validaciones) | Es la única capa que nunca se ejercita con asserts propios en los demás archivos de test (se usa solo como *fixture* de apoyo), y tiene comportamiento no obvio: acumula cantidad en vez de duplicar líneas, y trata qty≤0 como "eliminar línea" en vez de rechazarlo. |
+
+### Área no testeada y por qué se dejó fuera
+
+| Área no testeada | Por qué se dejó fuera |
+|---|---|
+| Migraciones individuales de `db_manager.py` | Son defensivas por diseño (chequean con `_column_exists`/`_table_has_column` antes de aplicar cualquier cambio) y de bajo riesgo: ya se validaron manualmente durante el desarrollo de cada fase contra bases con esquema viejo. |
+| `product_backup_service.py`, `time_utils.py`, `utils_format.py` | Utilidades de bajo riesgo (formateo, fechas, import/export de CSV) sin lógica de negocio ni efectos irreversibles sobre datos ya guardados. |
+| `report_service.top_products` / `daily_totals` / `hourly_totals` / `monthly_totals` | Repiten el mismo patrón de agregación SQL ya validado en `summary()` (mismo `JOIN`, mismo filtro de fecha, mismo tipo de `GROUP BY`); testearlas no ejercita ninguna lógica nueva. |
+| `ui/` | Requeriría un arnés de test distinto (por ejemplo `pytest-qt`) — inversión desproporcionada para el alcance de este proyecto. |
+
+`force_delete_product()` quedó deprecada (ver Fase 3) y a propósito no tiene tests nuevos: ya no es el camino recomendado para eliminar productos con historial, se conserva solo como referencia del problema que motivó el cambio a baja lógica.

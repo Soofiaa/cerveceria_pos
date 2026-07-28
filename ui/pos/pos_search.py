@@ -67,6 +67,45 @@ class POSSearchMixin:
         # Importante: NO llamamos aquí a add_item_by_search
 
 
+    # === Alerta de stock bajo ===
+    def _maybe_alert_low_stock(self, product_id):
+        """
+        Si el producto tiene stock bajo (considerando lo que ya hay en el
+        ticket actual), muestra una advertencia. No bloquea la venta.
+        """
+        if not product_id or not self.current_ticket_id:
+            return
+
+        prod = ps.get_product(product_id)
+        if not prod:
+            return
+
+        name = (prod.get("name") or "").strip()
+        if name.lower() == "producto común":
+            return
+
+        stock = int(prod.get("stock") or 0)
+        min_stock = int(prod.get("min_stock") or 0)
+
+        qty_in_ticket = sum(
+            int(it["qty"])
+            for it in ts.list_items(self.current_ticket_id)
+            if it["product_id"] == product_id
+        )
+        remaining = stock - qty_in_ticket
+
+        if remaining <= min_stock:
+            QMessageBox.warning(
+                self,
+                "Stock bajo",
+                (
+                    f"El producto \"{name}\" tiene stock bajo.\n\n"
+                    f"Stock en inventario: {stock}\n"
+                    f"Cantidad en este ticket: {qty_in_ticket}\n"
+                    f"Quedarían: {remaining} (alerta configurada en {min_stock})"
+                ),
+            )
+
     # === Ítems ===
     def add_common_item_dialog(self):
         """Abre el diálogo de producto común y agrega la línea al ticket."""
@@ -144,6 +183,9 @@ class POSSearchMixin:
         last_row = self.table.rowCount() - 1
         if last_row >= 0:
             self.table.setCurrentCell(last_row, 1)  # columna Cant
+
+        # Avisar si el producto queda con stock bajo
+        self._maybe_alert_low_stock(pid)
 
         # Actualizar panel izquierdo de tickets
         self._refresh_tickets_sidebar()

@@ -36,7 +36,7 @@ class ProductDialog(QDialog):
         self.setWindowTitle("Editar producto" if is_edit else "Nuevo producto")
 
         # Tamaño y márgenes generales del diálogo
-        self.resize(420, 260)
+        self.resize(420, 320)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
@@ -79,8 +79,23 @@ class ProductDialog(QDialog):
         self.in_barcode = QLineEdit()
         self.in_barcode.setPlaceholderText("Opcional")
 
+        self.in_stock = QLineEdit()
+        self.in_stock.setValidator(QIntValidator(0, 10**9, self))
+        self.in_stock.setPlaceholderText("Ej: 24")
+        self.in_stock.setAlignment(Qt.AlignRight)
+        self.in_stock.setText("0")
+
+        self.in_min_stock = QLineEdit()
+        self.in_min_stock.setValidator(QIntValidator(0, 10**9, self))
+        self.in_min_stock.setPlaceholderText("Ej: 5")
+        self.in_min_stock.setAlignment(Qt.AlignRight)
+        self.in_min_stock.setText("0")
+
         # Altura homogénea en los campos
-        for le in [self.in_name, self.in_sale, self.in_purchase, self.in_barcode]:
+        for le in [
+            self.in_name, self.in_sale, self.in_purchase, self.in_barcode,
+            self.in_stock, self.in_min_stock,
+        ]:
             le.setMinimumHeight(32)
 
         # Etiquetas del formulario
@@ -88,6 +103,8 @@ class ProductDialog(QDialog):
         group_layout.addRow("Precio venta*", self.in_sale)
         group_layout.addRow("Precio compra", self.in_purchase)
         group_layout.addRow("Código de barras", self.in_barcode)
+        group_layout.addRow("Stock actual", self.in_stock)
+        group_layout.addRow("Alerta de stock bajo", self.in_min_stock)
 
         group.setLayout(group_layout)
         layout.addWidget(group)
@@ -119,6 +136,8 @@ class ProductDialog(QDialog):
             self.in_sale.setText(str(data.get("sale_price") or 0))
             self.in_purchase.setText(str(data.get("purchase_price") or 0))
             self.in_barcode.setText(data.get("barcode") or "")
+            self.in_stock.setText(str(data.get("stock") or 0))
+            self.in_min_stock.setText(str(data.get("min_stock") or 0))
 
         self.in_name.setFocus()
 
@@ -144,10 +163,22 @@ class ProductDialog(QDialog):
 
         barcode = (self.in_barcode.text() or "").strip() or None
 
+        try:
+            stock = int(self.in_stock.text() or 0)
+        except ValueError:
+            stock = 0
+
+        try:
+            min_stock = int(self.in_min_stock.text() or 0)
+        except ValueError:
+            min_stock = 0
+
         self.result = {
             "name": name,
             "sale_price": sale,
             "purchase_price": purchase,
             "barcode": barcode,
+            "stock": stock,
+            "min_stock": min_stock,
         }
         self.accept()

@@ -1,0 +1,38 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# === Entornos virtuales ===
+venv/
+.venv/
+env/
+ENV/
+
+# === Empaquetado / distribución (PyInstaller) ===
+build/
+dist/
+*.spec
+
+# === Base de datos local (nunca versionar datos de usuario) ===
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# === Tests ===
+.pytest_cache/
+.coverage
+htmlcov/
+
+# === Editores / SO ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log

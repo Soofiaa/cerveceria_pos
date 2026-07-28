@@ -71,11 +71,18 @@ def summary(date_from, date_to) -> Dict[str, Any]:
                 margins_sum += margin
                 margin_count += 1
 
-        avg_ticket = 0
-        tickets = 0
+        # Número de ventas distintas en el rango (mismo JOIN/filtro que arriba,
+        # pero contando ventas -no líneas de detalle- una sola vez cada una).
+        cur.execute("""
+            SELECT COUNT(DISTINCT s.id)
+            FROM sales s
+            JOIN sale_items si ON si.sale_id = s.id
+            JOIN products p ON p.id = si.product_id
+            WHERE date(s.created_at) BETWEEN ? AND ?
+        """, (d1, d2))
+        tickets = cur.fetchone()[0] or 0
 
-        # Si ya tienes lógica para tickets/avg_ticket aparte, puedes mantenerla;
-        # aquí lo dejo en 0 por simplicidad o puedes combinarlo con tu código actual.
+        avg_ticket = round(total_revenue / tickets) if tickets > 0 else 0
 
         avg_margin = (margins_sum / margin_count) if margin_count > 0 else 0.0
 

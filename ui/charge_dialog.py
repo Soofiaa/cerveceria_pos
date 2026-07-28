@@ -24,7 +24,7 @@ class ChargeDialog(QDialog):
     - Detalle dinámico según el método (efectivo = monto/vuelto, otros = referencia).
     """
 
-    def __init__(self, total: int, parent=None):
+    def __init__(self, total: int, parent=None, stock_warnings: list | None = None):
         super().__init__(parent)
 
         self.setWindowTitle("Cobrar")
@@ -50,6 +50,27 @@ class ChargeDialog(QDialog):
 
         lay.addWidget(title)
         lay.addWidget(subtitle)
+
+        # --- Aviso de stock bajo (visual, no bloqueante: no exige confirmación
+        # aparte, solo informa antes de que el usuario confirme el cobro) ---
+        if stock_warnings:
+            lines = "\n".join(
+                f"• {w['product_name']}: quedarían {w['stock_resultante']} unidades"
+                for w in stock_warnings
+            )
+            warn = QLabel(f"⚠ Este cobro dejará stock negativo en:\n{lines}")
+            warn.setWordWrap(True)
+            warn.setObjectName("StockWarningBanner")
+            warn.setStyleSheet(
+                "QLabel#StockWarningBanner {"
+                "  background-color: #fff3cd;"
+                "  color: #7a5b00;"
+                "  border: 1px solid #ffe08a;"
+                "  border-radius: 6px;"
+                "  padding: 8px 10px;"
+                "}"
+            )
+            lay.addWidget(warn)
 
         # --- Total a cobrar: dos líneas dentro de la misma “tarjeta” ---
         total_badge = QLabel()

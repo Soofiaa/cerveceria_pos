@@ -36,10 +36,30 @@ class ProductActionsMixin:
 
             self.table.setItem(row, 1, self._make_money_item(r["sale_price"]))
             self.table.setItem(row, 2, self._make_money_item(r["purchase_price"]))
-            self.table.setItem(row, 3, self._make_barcode_item(r))
+            self.table.setItem(row, 3, self._make_stock_item(r))
+            self.table.setItem(row, 4, self._make_barcode_item(r))
+
+            if int(r.get("stock") or 0) <= int(r.get("min_stock") or 0):
+                self._mark_row_low_stock(row)
 
         self.table.clearSelection()
         self._on_selection_changed()
+
+    def _make_stock_item(self, row_data):
+        from PySide6.QtWidgets import QTableWidgetItem
+
+        item = QTableWidgetItem(str(row_data.get("stock") or 0))
+        item.setTextAlignment(Qt.AlignCenter)
+        return item
+
+    def _mark_row_low_stock(self, row):
+        from PySide6.QtGui import QBrush, QColor
+
+        brush = QBrush(QColor("#ffe0b2"))
+        for col in range(self.table.columnCount()):
+            item = self.table.item(row, col)
+            if item:
+                item.setBackground(brush)
 
     def _make_name_item(self, row_data):
         item = self._create_item(row_data["name"] or "")
@@ -75,6 +95,8 @@ class ProductActionsMixin:
                 sale_price=data["sale_price"],
                 purchase_price=data["purchase_price"],
                 barcode=data["barcode"],
+                stock=data["stock"],
+                min_stock=data["min_stock"],
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo crear el producto:\n{e}")
@@ -104,6 +126,8 @@ class ProductActionsMixin:
                 sale_price=new_data["sale_price"],
                 purchase_price=new_data["purchase_price"],
                 barcode=new_data["barcode"],
+                stock=new_data["stock"],
+                min_stock=new_data["min_stock"],
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo actualizar el producto:\n{e}")
@@ -133,27 +157,28 @@ class ProductActionsMixin:
         except ValueError as ve:
             resp = QMessageBox.question(
                 self,
-                "Producto con ventas",
+                "Producto con historial",
                 (
                     f"{ve}\n\n"
-                    "Este producto tiene ventas o tickets relacionados.\n"
-                    "Si continúas, se eliminarán las líneas de detalle "
-                    "asociadas a este producto en ventas y tickets.\n\n"
-                    "¿Deseas eliminarlo de todos modos?"
+                    "En vez de borrarlo (lo que rompería el historial de ventas ya "
+                    "registradas), puedes desactivarlo: ya no aparecerá en las "
+                    "búsquedas ni en el punto de venta, pero se conserva su "
+                    "historial de ventas.\n\n"
+                    "¿Deseas desactivar el producto?"
                 ),
                 QMessageBox.Yes | QMessageBox.No,
             )
             if resp != QMessageBox.Yes:
                 return
             try:
-                ps.force_delete_product(pid)
+                ps.desactivar_producto(pid)
                 self.reload()
                 return
             except Exception as e:
                 QMessageBox.critical(
                     self,
                     "Error",
-                    f"No se pudo eliminar el producto incluso forzando:\n{e}",
+                    f"No se pudo desactivar el producto:\n{e}",
                 )
                 return
         except Exception as e:

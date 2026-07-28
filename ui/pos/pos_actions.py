@@ -82,7 +82,11 @@ class POSActionsMixin:
             QMessageBox.warning(self, "Cobrar", "El ticket está vacío.")
             return
 
-        dlg = ChargeDialog(total=tot, parent=self)
+        # Se calcula ANTES de abrir el diálogo, para que el aviso de stock
+        # bajo ya esté visible cuando el usuario decide confirmar el cobro.
+        stock_warnings = ss.stock_warnings_for_ticket(self.current_ticket_id)
+
+        dlg = ChargeDialog(total=tot, parent=self, stock_warnings=stock_warnings)
         if dlg.exec() != ChargeDialog.Accepted:
             return
 
@@ -93,7 +97,7 @@ class POSActionsMixin:
         ts.set_pay_method(self.current_ticket_id, pay_method)
 
         try:
-            sid = ss.cobrar_ticket(self.current_ticket_id)
+            sid, _stock_warnings = ss.cobrar_ticket(self.current_ticket_id)
 
             # Recargar tickets abiertos y notificar al resto de la app
             self.reload_tickets(initial=True)

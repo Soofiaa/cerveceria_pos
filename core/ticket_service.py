@@ -103,6 +103,36 @@ def list_open_tickets() -> List[Dict[str, Any]]:
         } for r in rows]
 
 # -------- Ítems de ticket --------
+def get_item(item_id: int) -> Optional[Dict[str, Any]]:
+    """Devuelve una línea de ticket abierto por su id (o None)."""
+    with get_conn() as con:
+        cur = con.cursor()
+        cur.execute("""
+            SELECT
+                i.id,
+                i.ticket_id,
+                i.product_id,
+                COALESCE(i.display_name, p.name) AS final_name,
+                i.qty,
+                i.unit_price
+            FROM open_ticket_items i
+            JOIN products p ON p.id = i.product_id
+            WHERE i.id=?
+        """, (item_id,))
+        r = cur.fetchone()
+        if not r:
+            return None
+        return {
+            "id": r[0],
+            "ticket_id": r[1],
+            "product_id": r[2],
+            "product_name": r[3],
+            "qty": r[4],
+            "unit_price": r[5],
+            "line_total": _line_total(r[4], r[5]),
+        }
+
+
 def list_items(ticket_id: int) -> List[Dict[str, Any]]:
     with get_conn() as con:
         cur = con.cursor()
