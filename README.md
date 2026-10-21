@@ -153,4 +153,4 @@ El objetivo de la suite de tests no es cobertura exhaustiva del código, sino cu
 ## Autora
 
 **Sofía Menzel** — Ingeniera en Ejecución Informática (PUCV, 2025)
-[LinkedIn](#) · [Portafolio](https://portafolio-web-theta-coral.vercel.app) · [GitHub](https://github.com/Soofiaa)
+[LinkedIn](https://www.linkedin.com/in/sofia-menzel-madrid/) · [Portafolio](https://portafolio-web-theta-coral.vercel.app) · [GitHub](https://github.com/Soofiaa)
