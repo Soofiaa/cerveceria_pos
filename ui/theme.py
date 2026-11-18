@@ -70,7 +70,7 @@ THEMES = {
         "primary_text": "#ffffff",
     },
     "grafito": {
-        "primary": "#4a5568",
+        "primary": "#8090a8",
         "secondary": "#718096",
         "background": "#2d3748",
         "text": "#e2e8f0",
@@ -80,7 +80,7 @@ THEMES = {
         "success": "#68d391",
         "surface": "#3a4658",
         "input_text": "#e2e8f0",
-        "primary_text": "#ffffff",
+        "primary_text": "#1a202c",
     },
 }
 

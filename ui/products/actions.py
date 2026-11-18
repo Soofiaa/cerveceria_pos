@@ -54,12 +54,20 @@ class ProductActionsMixin:
 
     def _mark_row_low_stock(self, row):
         from PySide6.QtGui import QBrush, QColor
+        from core.config import load_config
+        from ui.theme import get_theme
 
-        brush = QBrush(QColor("#ffe0b2"))
+        theme = get_theme(load_config().get("theme", "neutro"))
+        brush = QBrush(QColor(theme["warning"]))
+        # Texto oscuro fijo: sobre "warning" (ámbar claro en oscuro/grafito) el
+        # input_text del tema claro sería ilegible. #1c2833 da >= 4.08:1 en todos.
+        text_brush = QBrush(QColor("#1c2833"))
+        
         for col in range(self.table.columnCount()):
             item = self.table.item(row, col)
             if item:
                 item.setBackground(brush)
+                item.setForeground(text_brush)
 
     def _make_name_item(self, row_data):
         item = self._create_item(row_data["name"] or "")
@@ -89,18 +97,29 @@ class ProductActionsMixin:
             return
 
         data = dlg.result
-        try:
-            ps.create_product(
-                name=data["name"],
-                sale_price=data["sale_price"],
-                purchase_price=data["purchase_price"],
-                barcode=data["barcode"],
-                stock=data["stock"],
-                min_stock=data["min_stock"],
-            )
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo crear el producto:\n{e}")
-            return
+        while True:
+            try:
+                ps.create_product(
+                    name=data["name"],
+                    sale_price=data["sale_price"],
+                    purchase_price=data["purchase_price"],
+                    barcode=data["barcode"],
+                    stock=data["stock"],
+                    min_stock=data["min_stock"],
+                )
+                break
+            except ValueError as e:
+                reply = QMessageBox.critical(self, "Error", str(e), QMessageBox.Retry | QMessageBox.Cancel)
+                if reply == QMessageBox.Cancel:
+                    return
+                # Reabrir el diálogo para corregir
+                dlg = ProductDialog(self, data=data)
+                if dlg.exec() != ProductDialog.Accepted or not dlg.result:
+                    return
+                data = dlg.result
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo crear el producto:\n{e}")
+                return
 
         self.reload()
 
@@ -119,19 +138,30 @@ class ProductActionsMixin:
             return
 
         new_data = dlg.result
-        try:
-            ps.update_product(
-                pid,
-                name=new_data["name"],
-                sale_price=new_data["sale_price"],
-                purchase_price=new_data["purchase_price"],
-                barcode=new_data["barcode"],
-                stock=new_data["stock"],
-                min_stock=new_data["min_stock"],
-            )
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo actualizar el producto:\n{e}")
-            return
+        while True:
+            try:
+                ps.update_product(
+                    pid,
+                    name=new_data["name"],
+                    sale_price=new_data["sale_price"],
+                    purchase_price=new_data["purchase_price"],
+                    barcode=new_data["barcode"],
+                    stock=new_data["stock"],
+                    min_stock=new_data["min_stock"],
+                )
+                break
+            except ValueError as e:
+                reply = QMessageBox.critical(self, "Error", str(e), QMessageBox.Retry | QMessageBox.Cancel)
+                if reply == QMessageBox.Cancel:
+                    return
+                # Reabrir el diálogo para corregir
+                dlg = ProductDialog(self, data=new_data)
+                if dlg.exec() != ProductDialog.Accepted or not dlg.result:
+                    return
+                new_data = dlg.result
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo actualizar el producto:\n{e}")
+                return
 
         self.reload()
 

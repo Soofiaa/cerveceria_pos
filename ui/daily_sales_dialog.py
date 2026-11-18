@@ -8,9 +8,11 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QHeaderView, QDateEdit
 )
 
+from core.config import load_config
 from core.utils_format import fmt_money
 from core import sales_service as ss
 from ui.reports_view import ModernDateEdit
+from ui.theme import get_theme
 
 
 class DailySalesDialog(QDialog):
@@ -39,44 +41,40 @@ class DailySalesDialog(QDialog):
         self.date_edit.setMinimumWidth(130)
         self.date_edit.setMinimumHeight(30)
 
-        # --- Estilo para que el botón del calendario sea visible ---
-        self.date_edit.setStyleSheet("""
-            QDateEdit {
-                border: 1px solid #888;
+        # --- Estilo con tokens del tema (no colores fijos; ver M6) ---
+        theme = get_theme(load_config().get("theme", "neutro"))
+        self.date_edit.setStyleSheet(f"""
+            QDateEdit {{
+                background-color: {theme["surface"]};
+                color: {theme["input_text"]};
+                border: 1px solid {theme["secondary"]};
                 border-radius: 6px;
                 padding: 4px 6px;
-                background: white;
                 min-width: 130px;
-            }
+                selection-background-color: {theme["primary"]};
+                selection-color: {theme["primary_text"]};
+            }}
+            QDateEdit:focus {{
+                border: 1px solid {theme["primary"]};
+            }}
 
-            QDateEdit::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: right;
-                width: 28px;
-                border-left: 1px solid #888;
-                background: #e6e6e6;
-                border-top-right-radius: 6px;
-                border-bottom-right-radius: 6px;
-            }
+            /* Ocultar drop-down nativo: el botón ▼ lo dibuja ModernDateEdit */
+            QDateEdit::drop-down {{
+                width: 0px;
+                border: 0px;
+            }}
 
-            QDateEdit::down-arrow {
-                width: 14px;
-                height: 14px;
-                image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAMCAYAAABbayygAAAAAXNSR0IArs4c6QAAAH5JREFUKFNjZGBg+M9ABGBiIAT/BwYGBmYmJiY/ExMT8/8zMDDwPwPDhw9fQJGBgeH8/fv3PwPDv38/DFhYWNjFxcUwMDAQmJiY+D8jwH+YGBgYGLgTxkZmZgZmBgYGAWLjx8+PBxAwPDLwMDww8DA8PxGDAwMDDwH6GgYHh7++fPnwMDAwMDA0NDA8MDAL3FBgY8M1jYAAAAASUVORK5CYII=);
-            }
-            
-            /* Ocultar los botones de subir/bajar fecha */
-            QDateEdit::up-button {
+            /* OCULTAR LOS BOTONES DE SUBIR Y BAJAR FECHA */
+            QDateEdit::up-button {{
                 width: 0px;
                 height: 0px;
                 border: none;
-            }
-            
-            QDateEdit::down-button {
+            }}
+            QDateEdit::down-button {{
                 width: 0px;
                 height: 0px;
                 border: none;
-            }
+            }}
         """)
 
         # Botón actualizar

@@ -4,7 +4,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QListWidget,
-    QSplitter, QCompleter, QLineEdit, QAbstractItemView
+    QSplitter, QCompleter, QAbstractItemView
 )
 
 from core import ticket_service as ts
@@ -124,7 +124,7 @@ class POSView(
         self.table.setAlternatingRowColors(True)
         
         self.table.setEditTriggers(
-            QAbstractItemView.EditKeyPressed
+            QAbstractItemView.EditKeyPressed | QAbstractItemView.DoubleClicked
         )
 
         self.table.setItemDelegateForColumn(1, IntSpinDelegate(self))
@@ -207,7 +207,7 @@ class POSView(
         
         # Suprimir para eliminar la línea seleccionada del ticket
         shortcut_del = QShortcut(QKeySequence("Delete"), self)
-        shortcut_del.activated.connect(self._delete_current_row)
+        shortcut_del.activated.connect(self._on_delete_shortcut)
         
         # F2: ir a la tabla del ticket para navegar con ↑/↓ y usar +/-
         shortcut_focus_table = QShortcut(QKeySequence("F2"), self)
@@ -359,12 +359,20 @@ class POSView(
             self._maybe_alert_low_stock(product_id)
 
 
-    def _delete_current_row(self):
-        """Elimina la línea actualmente seleccionada en la tabla (atajo Supr)."""
+    def _on_delete_shortcut(self):
+        """Supr: solo borra la línea si el foco está en la tabla y el POS es visible.
+        Desde el buscador Supr debe borrar texto, no líneas (G2)."""
+        if not self.table.hasFocus() or not self.isVisible():
+            return
+        self._delete_current_row()
+
+    def _delete_current_row(self, row: int | None = None):
+        """Elimina una línea del ticket tras confirmar (Supr y la ✕ usan este camino, G4)."""
         if not self.current_ticket_id:
             return
 
-        row = self.table.currentRow()
+        if row is None:
+            row = self.table.currentRow()
         if row < 0:
             return
 
@@ -376,7 +384,14 @@ class POSView(
         if line_id is None:
             return
 
-        # Eliminar ítem en BD
+        reply = QMessageBox.question(
+            self, "Confirmar",
+            f"¿Eliminar '{prod_cell.text()}' del ticket?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
         ts.remove_item(int(line_id))
 
         # Recargar manteniendo foco/selección coherente en la tabla
@@ -501,30 +516,12 @@ class POSView(
                     self._change_current_qty(-1)
                     return True  # manejamos nosotros
 
-                # Suprimir: eliminar la línea seleccionada
-                if key == Qt.Key_Delete:
-                    self._delete_current_row()
-                    return True
-
                 # Flechas ↑/↓: dejamos que la tabla navegue normalmente
+                # (Supr lo maneja el QShortcut con guarda de foco: _on_delete_shortcut)
                 return super().eventFilter(obj, event)
 
             # --- Atajos cuando el foco está en la BÚSQUEDA ---
             if obj is self.in_search:
-                # + / - modifican cantidad del ítem seleccionado en la tabla
-                if key in (Qt.Key_Plus, Qt.Key_Equal):
-                    self._change_current_qty(+1)
-                    return True  # IMPORTANTE: no dejar que QLineEdit procese la tecla
-
-                if key in (Qt.Key_Minus, Qt.Key_Underscore):
-                    self._change_current_qty(-1)
-                    return True
-
-                # Suprimir: eliminar la línea seleccionada del ticket
-                if key == Qt.Key_Delete:
-                    self._delete_current_row()
-                    return True
-
                 # Flecha ARRIBA: seleccionar ítem anterior en la tabla
                 if key == Qt.Key_Up:
                     if self.table.rowCount() > 0:
@@ -557,17 +554,7 @@ class POSView(
             if not self.current_ticket_id:
                 return
 
-            prod_cell = self.table.item(row, 0)
-            if not prod_cell:
-                return
-
-            line_id = prod_cell.data(Qt.UserRole)
-            if line_id is None:
-                return
-
-            ts.remove_item(int(line_id))
-            self.load_ticket(self.current_ticket_id)
-            self._refresh_tickets_sidebar()
+            self._delete_current_row(row)  # G4: mismo camino con confirmación
             self.in_search.setFocus()
             return
 
