@@ -4,7 +4,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QListWidget,
-    QSplitter, QCompleter, QLineEdit, QAbstractItemView
+    QSplitter, QCompleter, QAbstractItemView
 )
 
 from core import ticket_service as ts
@@ -124,7 +124,7 @@ class POSView(
         self.table.setAlternatingRowColors(True)
         
         self.table.setEditTriggers(
-            QAbstractItemView.EditKeyPressed
+            QAbstractItemView.EditKeyPressed | QAbstractItemView.DoubleClicked
         )
 
         self.table.setItemDelegateForColumn(1, IntSpinDelegate(self))
@@ -375,6 +375,13 @@ class POSView(
         line_id = prod_cell.data(Qt.UserRole)
         if line_id is None:
             return
+            
+        # G4: Confirmar borrado
+        reply = QMessageBox.question(self, 'Confirmar', 
+                                   f"¿Eliminar '{prod_cell.text()}'?",
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return
 
         # Eliminar ítem en BD
         ts.remove_item(int(line_id))
@@ -511,20 +518,6 @@ class POSView(
 
             # --- Atajos cuando el foco está en la BÚSQUEDA ---
             if obj is self.in_search:
-                # + / - modifican cantidad del ítem seleccionado en la tabla
-                if key in (Qt.Key_Plus, Qt.Key_Equal):
-                    self._change_current_qty(+1)
-                    return True  # IMPORTANTE: no dejar que QLineEdit procese la tecla
-
-                if key in (Qt.Key_Minus, Qt.Key_Underscore):
-                    self._change_current_qty(-1)
-                    return True
-
-                # Suprimir: eliminar la línea seleccionada del ticket
-                if key == Qt.Key_Delete:
-                    self._delete_current_row()
-                    return True
-
                 # Flecha ARRIBA: seleccionar ítem anterior en la tabla
                 if key == Qt.Key_Up:
                     if self.table.rowCount() > 0:

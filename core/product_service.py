@@ -1,7 +1,7 @@
 # core/product_service.py
+import sqlite3
 from typing import List, Dict, Optional, Any
 from core.db_manager import get_conn
-
 
 def create_product(
     name: str,
@@ -20,12 +20,15 @@ def create_product(
 
     with get_conn() as con:
         cur = con.cursor()
-        cur.execute("""
-            INSERT INTO products (name, sale_price, purchase_price, barcode, stock, min_stock)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (name.strip(), int(sale_price), int(purchase_price), barcode, int(stock), int(min_stock)))
-        con.commit()
-        return cur.lastrowid
+        try:
+            cur.execute("""
+                INSERT INTO products (name, sale_price, purchase_price, barcode, stock, min_stock)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (name.strip(), int(sale_price), int(purchase_price), barcode, int(stock), int(min_stock)))
+            con.commit()
+            return cur.lastrowid
+        except sqlite3.IntegrityError:
+            raise ValueError("Ya existe un producto con ese código de barras.")
 
 
 def update_product(product_id: int, **fields) -> int:
@@ -121,6 +124,26 @@ def list_products(q: str = "", incluir_inactivos: bool = False) -> List[Dict[str
             }
             for r in rows
         ]
+
+
+def find_product_by_exact_code_or_name(q: str) -> Optional[Dict[str, Any]]:
+    """Busca coincidencia exacta por barcode o por nombre."""
+    q = (q or "").strip()
+    if not q:
+        return None
+    with get_conn() as con:
+        cur = con.cursor()
+        # Primero por barcode
+        cur.execute("SELECT id FROM products WHERE barcode=? AND is_active=1", (q,))
+        r = cur.fetchone()
+        if r:
+            return get_product(r[0])
+        # Luego por nombre
+        cur.execute("SELECT id FROM products WHERE name=? AND is_active=1", (q,))
+        r = cur.fetchone()
+        if r:
+            return get_product(r[0])
+    return None
 
 
 def adjust_stock(product_id: int, delta: int) -> None:

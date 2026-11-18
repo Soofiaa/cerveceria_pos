@@ -52,13 +52,14 @@ class ModernDateEdit(QDateEdit):
         self.setStyleSheet(
             f"""
             QDateEdit {{
-                background-color: #ffffff;
+                background-color: {theme["surface"]};
+                color: {theme["input_text"]};
                 border: 1px solid #d1d5db;
                 border-radius: 10px;
                 padding: 4px 8px;
                 padding-right: 22px;  /* espacio para la flecha moderna */
                 selection-background-color: {theme["primary"]};
-                selection-color: #111827;
+                selection-color: {theme["primary_text"]};
             }}
             QDateEdit:focus {{
                 border: 1px solid {theme["primary"]};
@@ -275,4 +276,3 @@ class ReportsView(QWidget, ReportActionsMixin):
     def showEvent(self, event):
         super().showEvent(event)
         # Cada vez que se entra a la pestaña Reportes, refrescamos datos
-        self._set_today()

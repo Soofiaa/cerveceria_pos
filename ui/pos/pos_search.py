@@ -150,7 +150,9 @@ class POSSearchMixin:
     
 
     def add_item_by_search(self):
-        """Agrega producto por nombre/código: cantidad 1, precio del producto."""
+        """Agrega producto por nombre/código: cantidad 1, precio del producto.
+        
+        G1: Busca coincidencia exacta en barcode, luego nombre, luego fuzzy. Si fuzzy devuelve >1, pide elegir."""
         if not self.current_ticket_id:
             self.new_ticket()
 
@@ -160,32 +162,49 @@ class POSSearchMixin:
             if not q:
                 QMessageBox.warning(self, "Agregar", "Escribe nombre o código para buscar.")
                 return
-            cand = ps.list_products(q)
-            if not cand:
-                QMessageBox.warning(self, "Producto", "No se encontró producto.")
-                return
-            pid = cand[0]["id"]
+            
+            # G1: buscar coincidencia exacta primero
+            exact = ps.find_product_by_exact_code_or_name(q)
+            if exact:
+                pid = exact["id"]
+            else:
+                cand = ps.list_products(q)
+                if not cand:
+                    QMessageBox.warning(self, "Producto", "No se encontró producto.")
+                    return
+                # Si hay >1 candidato, avisar y no hacer nada
+                if len(cand) > 1:
+                    names = "\n".join(c["name"] for c in cand[:5])
+                    QMessageBox.information(self, "Varias coincidencias",
+                        f"Hay {len(cand)} productos que coinciden:\n{names}\n\n"
+                        "Selecciona uno de las sugerencias o escribe el código completo.")
+                    return
+                pid = cand[0]["id"]
 
         prod = ps.get_product(pid)
-        ts.add_item(self.current_ticket_id, pid, qty=1, unit_price=prod["sale_price"])
+        line_id = ts.add_item(self.current_ticket_id, pid, qty=1, unit_price=prod["sale_price"])
 
         # Limpiar casilla de búsqueda y sugerencias
         self.in_search.clear()
         self.selected_product_id = None
         self.update_suggestions("")
 
-        # Recargar la tabla del ticket (sin preocuparnos del foco aún)
-        self._preserve_table_focus = True
-        self.load_ticket(self.current_ticket_id)
-        self._preserve_table_focus = False
+        # G3: marcar el nuevo line_id como seleccionado
+        self._selected_line_id = line_id
 
-        # Seleccionar automáticamente la última fila (producto recién agregado)
-        last_row = self.table.rowCount() - 1
-        if last_row >= 0:
-            self.table.setCurrentCell(last_row, 1)  # columna Cant
+        # Recargar la tabla del ticket
+        self._preserve_table_focus = False
+        self.load_ticket(self.current_ticket_id)
 
         # Avisar si el producto queda con stock bajo
         self._maybe_alert_low_stock(pid)
+        # Tras el aviso, restauramos foco/selección
+        # G3: que la selección siga en el producto recién agregado
+        for r in range(self.table.rowCount()):
+            cell = self.table.item(r, 0)
+            if cell and cell.data(Qt.UserRole) == line_id:
+                self.table.setCurrentCell(r, 1)  # columna Cant
+                break
 
         # Actualizar panel izquierdo de tickets
         self._refresh_tickets_sidebar()

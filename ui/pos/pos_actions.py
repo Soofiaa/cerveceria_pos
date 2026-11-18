@@ -53,6 +53,15 @@ class POSActionsMixin:
         """Elimina todos los ítems del ticket actual."""
         if not self.current_ticket_id:
             return
+            
+        # G4: Confirmar vaciado
+        _, _, tot = ts.calc_ticket_totals(self.current_ticket_id)
+        reply = QMessageBox.question(self, 'Confirmar', 
+                                   f"¿Estás seguro de limpiar el ticket actual (Total: {fmt_money(tot)})?",
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if reply == QMessageBox.No:
+            return
 
         for it in ts.list_items(self.current_ticket_id):
             ts.remove_item(it["id"])
@@ -62,8 +71,17 @@ class POSActionsMixin:
         self.in_search.setFocus()
 
     def _remove_line_direct(self, line_id: int):
-        """Elimina una línea específica (se usa por atajo u otras acciones directas)."""
+        """Elimina una línea específica."""
         if not self.current_ticket_id:
+            return
+
+        # G4: Confirmar borrado de línea
+        line = ts.get_item(line_id)
+        if not line: return
+        reply = QMessageBox.question(self, 'Confirmar', 
+                                   f"¿Eliminar '{line['product_name']}'?",
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.No:
             return
 
         ts.remove_item(int(line_id))

@@ -33,6 +33,10 @@ class ReportActionsMixin:
 
     def load_data(self):
         d1, d2 = self.in_from.date(), self.in_to.date()
+        if d1 > d2:
+            QMessageBox.warning(self, "Fechas", "La fecha Desde debe ser anterior a Hasta")
+            return
+
         s = summary(d1, d2)
 
         total = s.get("total", 0)
