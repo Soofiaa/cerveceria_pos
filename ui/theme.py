@@ -111,9 +111,9 @@ def build_stylesheet(theme_name: str) -> str:
 
     /* ===================== PESTAÑAS ===================== */
     QTabWidget::pane {{
-        border: 1px solid {t["secondary"]};
-        border-radius: 10px;
-        padding: 12px;
+        border: 1px solid {t["border"]};
+        border-radius: 12px;
+        padding: 16px;
         background-color: {t["surface"]};
     }}
     QTabBar::tab {{
@@ -138,8 +138,8 @@ def build_stylesheet(theme_name: str) -> str:
     QWidget#Sidebar {{
         background: {t["surface"]};
         border: 1px solid {t["border"]};
-        border-radius: 10px;
-        padding: 12px;
+        border-radius: 12px;
+        padding: 16px;
     }}
 
     QLabel#SidebarTitle {{
@@ -155,12 +155,12 @@ def build_stylesheet(theme_name: str) -> str:
     }}
     QListWidget#TicketList::item {{
         padding: 10px 12px;
-        border-radius: 8px;
-        margin-bottom: 4px;
+        border-radius: 10px;
+        margin-bottom: 6px;
     }}
     QListWidget#TicketList::item:selected {{
-        background-color: {t["primary"]};
-        color: {t["primary_text"]};
+        background-color: {t["border"]};
+        color: {t["input_text"]};
     }}
 
     /* ===================== TITULOS Y TEXTOS ===================== */
@@ -172,13 +172,14 @@ def build_stylesheet(theme_name: str) -> str:
     QLabel#HintLabel {{
         color: {t["secondary"]};
     }}
+    /* Total del ticket: tarjeta propia, grande y a la vista */
     QLabel#TotalsBadge {{
         background: {t["surface"]};
         border: 1px solid {t["border"]};
-        padding: 16px 20px;
-        border-radius: 10px;
+        padding: 22px 24px;
+        border-radius: 12px;
         color: {t["text"]};
-        font-size: 22pt;
+        font-size: 28pt;
         font-weight: 800;
     }}
 
@@ -186,9 +187,9 @@ def build_stylesheet(theme_name: str) -> str:
     /* ===================== BOTONES ===================== */
     QPushButton {{
         background-color: {t["surface"]};
-        border: 1px solid {t["secondary"]};
-        border-radius: 8px;
-        padding: 8px 14px;
+        border: 1px solid {t["border"]};
+        border-radius: 10px;
+        padding: 9px 16px;
         font-weight: 600;
         color: {t["text"]};
     }}
@@ -196,14 +197,14 @@ def build_stylesheet(theme_name: str) -> str:
         background-color: {t["background"]};
     }}
     QPushButton:pressed {{
-        background-color: {t["secondary"]};
-        color: {t["primary_text"]};
+        background-color: {t["border"]};
     }}
     QPushButton:disabled {{
         color: {t["secondary"]};
-        border-color: {t["secondary"]};
+        border-color: {t["border"]};
     }}
 
+    /* Único color fuerte: Cobrar y acciones principales */
     QPushButton[buttonType="primary"] {{
         background-color: {t["primary"]};
         border: 1px solid {t["primary"]};
@@ -225,13 +226,14 @@ def build_stylesheet(theme_name: str) -> str:
         color: {t["primary_text"]};
     }}
 
+    /* Sin punteado ni píldora: neutro y plano */
     QPushButton[buttonType="ghost"] {{
         background-color: transparent;
-        border: 1px dashed {t["secondary"]};
+        border: 1px solid {t["border"]};
         color: {t["text"]};
     }}
     QPushButton[buttonType="ghost"]:hover {{
-        border-style: solid;
+        background-color: {t["background"]};
     }}
 
     /* Medios de pago en PAGAR: mismo primario del tema, sin amarillo fijo */
@@ -296,27 +298,28 @@ def build_stylesheet(theme_name: str) -> str:
         alternate-background-color: {t["background"]};
         color: {t["input_text"]};
         border: 1px solid {t["border"]};
-        border-radius: 8px;
+        border-radius: 10px;
         gridline-color: transparent;
-        selection-background-color: {t["primary"]};
-        selection-color: {t["primary_text"]};
+        selection-background-color: {t["border"]};
+        selection-color: {t["input_text"]};
     }}
 
     QHeaderView::section {{
-        background: {t["background"]};
+        background: {t["surface"]};
         color: {t["text"]};
-        padding: 8px;
+        padding: 8px 10px;
         border: none;
-        border-bottom: 1px solid {t["secondary"]};
+        border-bottom: 1px solid {t["border"]};
+        font-size: 9pt;
         font-weight: 700;
     }}
 
     /* ===================== GROUPBOX ===================== */
     QGroupBox {{
-        border: 1px solid {t["secondary"]};
-        border-radius: 10px;
+        border: 1px solid {t["border"]};
+        border-radius: 12px;
         margin-top: 18px;
-        padding-top: 8px;
+        padding-top: 12px;
         background-color: {t["surface"]};
     }}
     QGroupBox::title {{
