@@ -59,7 +59,9 @@ class ProductActionsMixin:
 
         theme = get_theme(load_config().get("theme", "neutro"))
         brush = QBrush(QColor(theme["warning"]))
-        text_brush = QBrush(QColor(theme["input_text"]))
+        # Texto oscuro fijo: sobre "warning" (ámbar claro en oscuro/grafito) el
+        # input_text del tema claro sería ilegible. #1c2833 da >= 4.08:1 en todos.
+        text_brush = QBrush(QColor("#1c2833"))
         
         for col in range(self.table.columnCount()):
             item = self.table.item(row, col)
