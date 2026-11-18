@@ -3,12 +3,13 @@ import os
 import shutil
 
 from PySide6.QtWidgets import (
-    QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QVBoxLayout, QWidget,
+    QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QMessageBox, QPushButton, QTabBar, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QWidget,
 )
 
 from core import config
-from ui.theme import THEMES
+from ui.theme import THEMES, build_stylesheet
 
 
 class ConfigView(QWidget):
@@ -26,6 +27,7 @@ class ConfigView(QWidget):
         self.theme = QComboBox()
         self.theme.addItems(list(THEMES.keys()))
         self.theme.setCurrentText(conf["theme"] if conf["theme"] in THEMES else "neutro")
+        self.theme.currentTextChanged.connect(self._update_preview)
 
         self.logo_path = QLineEdit(conf["logo_path"])
         btn_logo = QPushButton("Elegir...")
@@ -54,11 +56,54 @@ class ConfigView(QWidget):
         hint = QLabel("Los cambios de nombre y tema se aplican al reiniciar la aplicación.")
         hint.setObjectName("HintLabel")
 
+        self.preview = self._build_preview()
+
         lay = QVBoxLayout(self)
         lay.addLayout(form)
         lay.addWidget(hint)
         lay.addLayout(buttons)
+        lay.addWidget(self.preview)
         lay.addStretch()
+
+        self._update_preview(self.theme.currentText())
+
+    def _build_preview(self) -> QFrame:
+        """Mini POS de muestra. Solo visual: no escribe nada."""
+        frame = QFrame()
+        frame.setObjectName("PreviewFrame")
+        lay = QVBoxLayout(frame)
+
+        title = QLabel("Vista previa")
+        title.setObjectName("SectionTitle")
+
+        tabs = QTabBar()
+        tabs.addTab("POS")
+        tabs.addTab("Productos")
+        tabs.addTab("Reportes")
+
+        search = QLineEdit()
+        search.setPlaceholderText("Buscar producto...")
+
+        table = QTableWidget(1, 3)
+        table.setHorizontalHeaderLabels(["Producto", "Cant", "Total"])
+        table.setItem(0, 0, QTableWidgetItem("Cerveza ejemplo"))
+        table.setItem(0, 1, QTableWidgetItem("2"))
+        table.setItem(0, 2, QTableWidgetItem("$5.000"))
+        table.setMaximumHeight(90)
+
+        cobrar = QPushButton("F12 - COBRAR")
+        cobrar.setProperty("buttonType", "primary")
+
+        lay.addWidget(title)
+        lay.addWidget(tabs)
+        lay.addWidget(search)
+        lay.addWidget(table)
+        lay.addWidget(cobrar)
+        return frame
+
+    def _update_preview(self, theme_name: str):
+        """Aplica el QSS del tema elegido solo a la vista previa (no a la app)."""
+        self.preview.setStyleSheet(build_stylesheet(theme_name))
 
     def _pick_logo(self):
         path, _ = QFileDialog.getOpenFileName(
