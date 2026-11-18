@@ -16,6 +16,7 @@ THEMES = {
         "surface": "#ffffff",
         "input_text": "#1c2833",
         "primary_text": "#ffffff",
+        "border": "#d5dbe0",
     },
     "cerveceria": {
         "primary": "#f2a72a",
@@ -29,6 +30,7 @@ THEMES = {
         "surface": "#ffffff",
         "input_text": "#4a3e2c",
         "primary_text": "#2b1d00",
+        "border": "#e8d9b5",
     },
     "oscuro": {
         "primary": "#2471a3",
@@ -42,6 +44,7 @@ THEMES = {
         "surface": "#2c3e50",
         "input_text": "#ecf0f1",
         "primary_text": "#ffffff",
+        "border": "#485b6e",
     },
     "menta": {
         "primary": "#1e8449",
@@ -55,6 +58,7 @@ THEMES = {
         "surface": "#ffffff",
         "input_text": "#1d3b30",
         "primary_text": "#ffffff",
+        "border": "#cfe3d8",
     },
     "lila": {
         "primary": "#7d3c98",
@@ -68,6 +72,7 @@ THEMES = {
         "surface": "#ffffff",
         "input_text": "#2e1a3a",
         "primary_text": "#ffffff",
+        "border": "#e2d0e6",
     },
     "grafito": {
         "primary": "#8090a8",
@@ -81,6 +86,7 @@ THEMES = {
         "surface": "#3a4658",
         "input_text": "#e2e8f0",
         "primary_text": "#1a202c",
+        "border": "#434b57",
     },
 }
 
@@ -131,7 +137,7 @@ def build_stylesheet(theme_name: str) -> str:
     /* ===================== SIDEBAR (Tickets abiertos) ===================== */
     QWidget#Sidebar {{
         background: {t["surface"]};
-        border: 1px solid {t["secondary"]};
+        border: 1px solid {t["border"]};
         border-radius: 10px;
         padding: 12px;
     }}
@@ -168,13 +174,14 @@ def build_stylesheet(theme_name: str) -> str:
     }}
     QLabel#TotalsBadge {{
         background: {t["surface"]};
-        border: 1px solid {t["secondary"]};
+        border: 1px solid {t["border"]};
         padding: 16px 20px;
         border-radius: 10px;
         color: {t["text"]};
         font-size: 22pt;
         font-weight: 800;
     }}
+
 
     /* ===================== BOTONES ===================== */
     QPushButton {{
@@ -288,7 +295,7 @@ def build_stylesheet(theme_name: str) -> str:
         background-color: {t["surface"]};
         alternate-background-color: {t["background"]};
         color: {t["input_text"]};
-        border: 1px solid {t["secondary"]};
+        border: 1px solid {t["border"]};
         border-radius: 8px;
         gridline-color: transparent;
         selection-background-color: {t["primary"]};

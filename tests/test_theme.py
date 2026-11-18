@@ -3,6 +3,7 @@ from ui.theme import THEMES, DEFAULT_THEME, get_theme
 REQUIRED_KEYS = {
     "primary", "secondary", "background", "text", "accent",
     "danger", "warning", "success", "surface", "input_text", "primary_text",
+    "border",
 }
 
 

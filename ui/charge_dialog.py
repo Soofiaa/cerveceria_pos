@@ -67,7 +67,7 @@ class ChargeDialog(QDialog):
             warn.setStyleSheet(
                 "QLabel#StockWarningBanner {"
                 f"  background-color: {theme['warning']};"
-                f"  color: {theme['text']};"
+                "  color: #1c2833;"
                 f"  border: 1px solid {theme['warning']};"
                 "  border-radius: 6px;"
                 "  padding: 8px 10px;"
