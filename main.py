@@ -28,15 +28,12 @@ def _build_palette(theme_name: str) -> QPalette:
     palette.setColor(QPalette.Button, QColor(theme["surface"]))
     palette.setColor(QPalette.ButtonText, QColor(theme["input_text"]))
     palette.setColor(QPalette.Highlight, QColor(theme["primary"]))
-    palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
+    palette.setColor(QPalette.HighlightedText, QColor(theme["primary_text"]))
     palette.setColor(QPalette.Link, QColor(theme["secondary"]))
     palette.setColor(QPalette.BrightText, QColor(theme["accent"]))
     return palette
 
 
-# ==========================================================
-# Stylesheet
-# ==========================================================
 # ==========================================================
 # Ventana principal
 # ==========================================================
@@ -52,12 +49,24 @@ class MainWindow(QMainWindow):
         tabs.addTab(POSView(), "POS")
         tabs.addTab(products_view, "Productos")
         tabs.addTab(ReportsView(), "Reportes")
-        tabs.addTab(ConfigView(), "Configuración")
+        tabs.addTab(ConfigView(on_saved=self.apply_theme), "Configuración")
         tabs.currentChanged.connect(
             lambda i: products_view.reload() if tabs.widget(i) is products_view else None
         )
 
         self.setCentralWidget(tabs)
+
+    def apply_theme(self, theme_name=None):
+        """
+        Aplica tema y nombre a toda la app sin reiniciar.
+        Sin argumento, lee el tema y el nombre desde config.json.
+        """
+        conf = config.load_config()
+        theme = theme_name or conf.get("theme", "neutro")
+        app = QApplication.instance()
+        app.setPalette(_build_palette(theme))
+        app.setStyleSheet(build_stylesheet(theme))
+        self.setWindowTitle(conf["business_name"])
 
 
 # ==========================================================
@@ -74,11 +83,8 @@ def main() -> None:
     font.setHintingPreference(QFont.PreferFullHinting)
     app.setFont(font)
 
-    theme = conf.get("theme", "neutro")
-    app.setPalette(_build_palette(theme))
-    app.setStyleSheet(build_stylesheet(theme))
-
     window = MainWindow()
+    window.apply_theme()
     window.show()
     sys.exit(app.exec())
 

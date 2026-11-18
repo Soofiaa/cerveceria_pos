@@ -13,10 +13,11 @@ from ui.theme import THEMES, build_stylesheet
 
 
 class ConfigView(QWidget):
-    """Pantalla de configuración del negocio. Los cambios se aplican al reiniciar."""
+    """Pantalla de configuración del negocio. Guardar aplica los cambios en caliente."""
 
-    def __init__(self):
+    def __init__(self, on_saved=None):
         super().__init__()
+        self._on_saved = on_saved
         conf = config.load_config()
 
         self.business_name = QLineEdit(conf["business_name"])
@@ -53,7 +54,7 @@ class ConfigView(QWidget):
         buttons.addWidget(btn_export)
         buttons.addStretch()
 
-        hint = QLabel("Los cambios de nombre y tema se aplican al reiniciar la aplicación.")
+        hint = QLabel("Los cambios se aplican al guardar, sin reiniciar.")
         hint.setObjectName("HintLabel")
 
         self.preview = self._build_preview()
@@ -138,10 +139,9 @@ class ConfigView(QWidget):
         except OSError as e:
             QMessageBox.critical(self, "Configuración", f"No se pudo guardar:\n{e}")
             return
-        QMessageBox.information(
-            self, "Configuración",
-            "Configuración guardada. Reinicia la aplicación para aplicar nombre y tema.",
-        )
+        if self._on_saved:
+            self._on_saved(data["theme"])
+        QMessageBox.information(self, "Configuración", "Configuración guardada.")
 
     def _export(self):
         path, _ = QFileDialog.getSaveFileName(self, "Exportar configuración", "config.json", "JSON (*.json)")
