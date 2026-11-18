@@ -59,7 +59,7 @@ class ProductActionsMixin:
 
         theme = get_theme(load_config().get("theme", "neutro"))
         brush = QBrush(QColor(theme["warning"]))
-        text_brush = QBrush(QColor(theme["text"]))
+        text_brush = QBrush(QColor(theme["input_text"]))
         
         for col in range(self.table.columnCount()):
             item = self.table.item(row, col)

@@ -54,9 +54,12 @@ def update_product(product_id: int, **fields) -> int:
     values.append(product_id)
     with get_conn() as con:
         cur = con.cursor()
-        cur.execute(f"UPDATE products SET {', '.join(sets)} WHERE id=?", values)
-        con.commit()
-        return cur.rowcount
+        try:
+            cur.execute(f"UPDATE products SET {', '.join(sets)} WHERE id=?", values)
+            con.commit()
+            return cur.rowcount
+        except sqlite3.IntegrityError:
+            raise ValueError("Ya existe un producto con ese código de barras.")
 
 
 def get_product(product_id: int) -> Optional[Dict[str, Any]]:
