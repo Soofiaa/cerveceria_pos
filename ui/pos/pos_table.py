@@ -3,8 +3,10 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QBrush, QFont
 from PySide6.QtWidgets import QTableWidgetItem
+from core.config import load_config
 from core.utils_format import fmt_money
 from core import ticket_service as ts
+from ui.theme import get_theme
 
 
 class POSTableMixin:
@@ -61,8 +63,9 @@ class POSTableMixin:
                 del_item.setFlags(del_item.flags() & ~Qt.ItemIsEditable)
                 
                 # Estilo rojo suave
-                del_item.setBackground(QBrush(QColor("#ffcccc")))  # Fondo rojo suave
-                del_item.setForeground(QBrush(QColor("#cc0000")))  # Texto rojo oscuro
+                theme = get_theme(load_config().get("theme", "neutro"))
+                del_item.setBackground(QBrush(QColor(theme["danger"])))
+                del_item.setForeground(QBrush(QColor(theme["background"])))
                 font = QFont()
                 font.setBold(True)
                 del_item.setFont(font)

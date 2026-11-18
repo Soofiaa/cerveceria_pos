@@ -7,7 +7,9 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QToolButton, QCalendarWidget
 )
 
+from core.config import load_config
 from ui.reports.actions import ReportActionsMixin
+from ui.theme import get_theme
 
 
 class MonthOnlyCalendar(QCalendarWidget):
@@ -44,39 +46,41 @@ class ModernDateEdit(QDateEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        theme = get_theme(load_config().get("theme", "neutro"))
+
         # Estilo del campo
         self.setStyleSheet(
-            """
-            QDateEdit {
+            f"""
+            QDateEdit {{
                 background-color: #ffffff;
                 border: 1px solid #d1d5db;
                 border-radius: 10px;
                 padding: 4px 8px;
                 padding-right: 22px;  /* espacio para la flecha moderna */
-                selection-background-color: #f4a506;
+                selection-background-color: {theme["primary"]};
                 selection-color: #111827;
-            }
-            QDateEdit:focus {
-                border: 1px solid #f2a72a;
-            }
+            }}
+            QDateEdit:focus {{
+                border: 1px solid {theme["primary"]};
+            }}
 
             /* Ocultar drop-down nativo (flecha vieja) */
-            QDateEdit::drop-down {
+            QDateEdit::drop-down {{
                 width: 0px;
                 border: 0px;
-            }
+            }}
 
             /* OCULTAR LOS BOTONES DE SUBIR Y BAJAR FECHA */
-            QDateEdit::up-button {
+            QDateEdit::up-button {{
                 width: 0px;
                 height: 0px;
                 border: none;
-            }
-            QDateEdit::down-button {
+            }}
+            QDateEdit::down-button {{
                 width: 0px;
                 height: 0px;
                 border: none;
-            }
+            }}
             """
         )
 
