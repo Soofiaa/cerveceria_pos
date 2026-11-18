@@ -1,8 +1,5 @@
 from PySide6.QtWidgets import QPushButton
 
-from core.config import load_config
-from ui.theme import get_theme
-
 
 def parse_price(txt: str) -> int:
     """
@@ -24,20 +21,6 @@ def parse_price(txt: str) -> int:
 def make_remove_button(item_id: int, on_click):
     """Crea un botón rojo de eliminar para tablas."""
     btn = QPushButton("✕")
-    theme = get_theme(load_config().get("theme", "neutro"))
-    btn.setStyleSheet(
-        f"""
-        QPushButton {{
-            background-color: {theme["danger"]};
-            border: 1px solid {theme["danger"]};
-            border-radius: 8px;
-            color: {theme["background"]};
-            font-weight: bold;
-            min-width: 24px;
-            min-height: 24px;
-        }}
-        QPushButton:hover {{ background-color: {theme["danger"]}; }}
-        """
-    )
+    btn.setObjectName("RemoveLineButton")  # estilo en ui/theme.py
     btn.clicked.connect(lambda *_: on_click(item_id))
     return btn

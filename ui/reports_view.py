@@ -46,44 +46,8 @@ class ModernDateEdit(QDateEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        # Estilo del campo: lo pone build_stylesheet() en ui/theme.py
         theme = get_theme(load_config().get("theme", "neutro"))
-
-        # Estilo del campo
-        self.setStyleSheet(
-            f"""
-            QDateEdit {{
-                background-color: {theme["surface"]};
-                color: {theme["input_text"]};
-                border: 1px solid #d1d5db;
-                border-radius: 10px;
-                padding: 4px 8px;
-                padding-right: 22px;  /* espacio para la flecha moderna */
-                selection-background-color: {theme["primary"]};
-                selection-color: {theme["primary_text"]};
-            }}
-            QDateEdit:focus {{
-                border: 1px solid {theme["primary"]};
-            }}
-
-            /* Ocultar drop-down nativo (flecha vieja) */
-            QDateEdit::drop-down {{
-                width: 0px;
-                border: 0px;
-            }}
-
-            /* OCULTAR LOS BOTONES DE SUBIR Y BAJAR FECHA */
-            QDateEdit::up-button {{
-                width: 0px;
-                height: 0px;
-                border: none;
-            }}
-            QDateEdit::down-button {{
-                width: 0px;
-                height: 0px;
-                border: none;
-            }}
-            """
-        )
 
         # Calendario popup propio
         self._calendar = MonthOnlyCalendar(self)
@@ -97,16 +61,16 @@ class ModernDateEdit(QDateEdit):
         self._btn.setText("▼")
         self._btn.setCursor(Qt.PointingHandCursor)
         self._btn.setStyleSheet(
-            """
-            QToolButton {
+            f"""
+            QToolButton {{
                 border: none;
                 padding: 0px;
                 font-weight: 900;
-                color: #6b7280;
-            }
-            QToolButton:hover {
-                color: #374151;
-            }
+                color: {theme["secondary"]};
+            }}
+            QToolButton:hover {{
+                color: {theme["text"]};
+            }}
             """
         )
         self._btn.clicked.connect(self.showCalendarPopup)

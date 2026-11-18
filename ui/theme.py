@@ -269,9 +269,9 @@ def build_stylesheet(theme_name: str) -> str:
     QLineEdit, QComboBox, QSpinBox, QDateEdit {{
         background-color: {t["surface"]};
         color: {t["input_text"]};
-        border: 1px solid {t["secondary"]};
-        border-radius: 8px;
-        padding: 6px 10px;
+        border: 1px solid {t["border"]};
+        border-radius: 10px;
+        padding: 8px 12px;
         selection-background-color: {t["primary"]};
         selection-color: {t["primary_text"]};
     }}
@@ -290,6 +290,26 @@ def build_stylesheet(theme_name: str) -> str:
         border: none;
         background: transparent;
         margin-right: 2px;
+    }}
+    /* Fechas de Reportes y Ventas del día: ▼ la dibuja ModernDateEdit */
+    QDateEdit {{
+        padding-right: 22px;
+    }}
+    QDateEdit::up-button, QDateEdit::down-button {{
+        width: 0px;
+        height: 0px;
+        border: none;
+    }}
+
+    /* Botón ✕ de línea */
+    QPushButton#RemoveLineButton {{
+        background-color: {t["danger"]};
+        border: 1px solid {t["danger"]};
+        border-radius: 8px;
+        color: {t["primary_text"]};
+        font-weight: 700;
+        min-width: 24px;
+        min-height: 24px;
     }}
 
     /* ===================== TABLAS ===================== */

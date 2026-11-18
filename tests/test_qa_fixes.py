@@ -174,7 +174,9 @@ def test_grafito_primario_se_distingue_del_fondo_y_texto_legible():
 
 def test_m6_modern_date_edit_no_tiene_blanco_fijo():
     from ui import reports_view
+    from ui.theme import build_stylesheet
 
     src = inspect.getsource(reports_view.ModernDateEdit.__init__)
     assert "#ffffff" not in src
-    assert 'theme["surface"]' in src
+    assert "#d1d5db" not in src
+    assert "QDateEdit" in build_stylesheet("neutro")

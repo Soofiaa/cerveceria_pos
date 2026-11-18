@@ -40,7 +40,7 @@ class POSView(
         self.list_tickets.setObjectName("TicketList")
 
         self.btn_new = QPushButton("Nuevo")
-        self.btn_new.setProperty("buttonType", "primary")
+        self.btn_new.setProperty("buttonType", "ghost")
         self.btn_delete = QPushButton("Eliminar")
         self.btn_delete.setProperty("buttonType", "danger")
 
@@ -150,7 +150,7 @@ class POSView(
 
         # Botón de "Ventas del día": sólido, que se note como botón
         self.btn_daily_sales = QPushButton("Ventas del día")
-        self.btn_daily_sales.setProperty("buttonType", "primary")
+        self.btn_daily_sales.setProperty("buttonType", "ghost")
         self.btn_daily_sales.clicked.connect(self.show_daily_sales_dialog)
 
         # Botón de cobro
@@ -164,8 +164,8 @@ class POSView(
         bottom.addWidget(self.btn_charge)
 
         right = QVBoxLayout()
-        right.setContentsMargins(6, 6, 6, 6)
-        right.setSpacing(6)
+        right.setContentsMargins(10, 10, 10, 10)
+        right.setSpacing(12)
         right.addLayout(top_right)
         right.addLayout(search_row)
         right.addLayout(actions_row)
