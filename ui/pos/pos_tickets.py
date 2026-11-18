@@ -3,6 +3,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMessageBox, QListWidgetItem
 
+from core import config
 from core import ticket_service as ts
 
 
@@ -66,9 +67,21 @@ class POSTicketsMixin:
 
         self.load_ticket(int(tid))
 
+    def _default_ticket_name(self) -> str:
+        """Nombre predefinido 'Ticket N' o 'Mesa N' (según Configuración), con el N libre más bajo."""
+        prefix = config.load_config().get("ticket_name_prefix", "Ticket")
+        if prefix not in ("Ticket", "Mesa"):
+            prefix = "Ticket"
+        taken = {(t.get("name") or "").strip() for t in ts.list_open_tickets()}
+        n = 1
+        while f"{prefix} {n}" in taken:
+            n += 1
+        return f"{prefix} {n}"
+
     def new_ticket(self):
-        """Crea un nuevo ticket (usando el nombre ingresado si existe)."""
-        ts.create_ticket(self.in_ticket_name.text().strip() or None)
+        """Crea un nuevo ticket (usando el nombre ingresado o el predefinido)."""
+        name = self.in_ticket_name.text().strip() or self._default_ticket_name()
+        ts.create_ticket(name)
         self.reload_tickets(initial=False)
         # seleccionar el primero (el más nuevo queda arriba con tu lógica actual)
         if self.list_tickets.count() > 0:

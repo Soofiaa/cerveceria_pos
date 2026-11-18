@@ -179,11 +179,10 @@ class POSView(
         right_widget.setLayout(right)
 
         # === Splitter principal ===
-        # Tickets abiertos a la derecha (solo reubicación; misma lógica)
         splitter = QSplitter()
-        splitter.addWidget(right_widget)
         splitter.addWidget(left_widget)
-        splitter.setSizes([800, 250])
+        splitter.addWidget(right_widget)
+        splitter.setSizes([250, 800])
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 14, 14, 14)  # margen interno

@@ -30,6 +30,12 @@ class ConfigView(QWidget):
         self.theme.setCurrentText(conf["theme"] if conf["theme"] in THEMES else "neutro")
         self.theme.currentTextChanged.connect(self._update_preview)
 
+        self.ticket_prefix = QComboBox()
+        self.ticket_prefix.addItems(["Ticket", "Mesa"])
+        self.ticket_prefix.setCurrentText(
+            conf.get("ticket_name_prefix") if conf.get("ticket_name_prefix") in ("Ticket", "Mesa") else "Ticket"
+        )
+
         self.logo_path = QLineEdit(conf["logo_path"])
         btn_logo = QPushButton("Elegir...")
         btn_logo.clicked.connect(self._pick_logo)
@@ -43,6 +49,7 @@ class ConfigView(QWidget):
         form.addRow("Dirección:", self.address)
         form.addRow("Teléfono:", self.phone)
         form.addRow("Tema:", self.theme)
+        form.addRow("Nombre de ticket nuevo:", self.ticket_prefix)
         form.addRow("Logo (PNG/JPG):", logo_row)
 
         btn_save = QPushButton("Guardar")
@@ -121,6 +128,7 @@ class ConfigView(QWidget):
             "phone": self.phone.text().strip(),
             "logo_path": self.logo_path.text().strip(),
             "theme": self.theme.currentText(),
+            "ticket_name_prefix": self.ticket_prefix.currentText(),
         }
 
     def _save(self):

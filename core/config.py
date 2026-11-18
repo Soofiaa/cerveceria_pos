@@ -13,7 +13,8 @@ DEFAULT_CONFIG = {
     "address": "",
     "phone": "",
     "logo_path": "",
-    "theme": "neutro"
+    "theme": "neutro",
+    "ticket_name_prefix": "Ticket"
 }
 
 def load_config(config_path=None):

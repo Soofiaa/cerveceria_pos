@@ -15,7 +15,8 @@ def test_save_and_load_roundtrip(tmp_path):
         "theme": "oscuro",
     }
     config.save_config(data, str(path))
-    assert config.load_config(str(path)) == data
+    # load_config completa con los valores por defecto (p. ej. ticket_name_prefix)
+    assert config.load_config(str(path)) == {**config.DEFAULT_CONFIG, **data}
 
 
 def test_corrupt_json_returns_defaults(tmp_path):
