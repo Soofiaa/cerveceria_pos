@@ -21,12 +21,12 @@ def _build_palette(theme_name: str) -> QPalette:
     theme = get_theme(theme_name)
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor(theme["background"]))
-    palette.setColor(QPalette.Base, QColor("#ffffff"))
+    palette.setColor(QPalette.Base, QColor(theme["surface"]))
     palette.setColor(QPalette.AlternateBase, QColor(theme["background"]))
     palette.setColor(QPalette.WindowText, QColor(theme["text"]))
-    palette.setColor(QPalette.Text, QColor(theme["text"]))
-    palette.setColor(QPalette.Button, QColor("#ffffff"))
-    palette.setColor(QPalette.ButtonText, QColor(theme["text"]))
+    palette.setColor(QPalette.Text, QColor(theme["input_text"]))
+    palette.setColor(QPalette.Button, QColor(theme["surface"]))
+    palette.setColor(QPalette.ButtonText, QColor(theme["input_text"]))
     palette.setColor(QPalette.Highlight, QColor(theme["primary"]))
     palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
     palette.setColor(QPalette.Link, QColor(theme["secondary"]))
@@ -190,7 +190,8 @@ def _build_stylesheet(theme_name: str) -> str:
 
     /* ===================== INPUTS ===================== */
     QLineEdit, QComboBox, QSpinBox {{
-        background-color: #ffffff;
+        background-color: {theme["surface"]};
+        color: {theme["input_text"]};
         border: 1px solid #d1d5db;
         border-radius: 10px;
         padding: 6px 10px;
@@ -204,7 +205,8 @@ def _build_stylesheet(theme_name: str) -> str:
 
     /* ===================== QDateEdit (Desde / Hasta) ===================== */
     QDateEdit {{
-        background-color: #ffffff;
+        background-color: {theme["surface"]};
+        color: {theme["input_text"]};
         border: 1px solid #d1d5db;
         border-radius: 10px;
         padding: 4px 8px;
@@ -229,7 +231,8 @@ def _build_stylesheet(theme_name: str) -> str:
 
     /* ===================== TABLAS ===================== */
     QTableView, QTableWidget {{
-        background-color: #ffffff;
+        background-color: {theme["surface"]};
+        color: {theme["input_text"]};
         alternate-background-color: {theme["background"]};
         border: 1px solid {theme["secondary"]};
         border-radius: 12px;
@@ -251,7 +254,7 @@ def _build_stylesheet(theme_name: str) -> str:
         border: 1px solid {theme["secondary"]};
         border-radius: 12px;
         margin-top: 18px;
-        background-color: #ffffff;
+        background-color: {theme["surface"]};
     }}
     QGroupBox::title {{
         subcontrol-origin: margin;
@@ -264,7 +267,7 @@ def _build_stylesheet(theme_name: str) -> str:
 
     /* ===================== DIALOGOS ===================== */
     QDialog {{
-        background-color: #ffffff;
+        background-color: {theme["surface"]};
         border: 1px solid {theme["secondary"]};
         border-radius: 14px;
     }}
@@ -275,7 +278,7 @@ def _build_stylesheet(theme_name: str) -> str:
     }}
 
     QMessageBox {{
-        background-color: #ffffff;
+        background-color: {theme["surface"]};
         border-radius: 14px;
     }}
     QMessageBox QLabel {{
@@ -299,10 +302,14 @@ class MainWindow(QMainWindow):
         self.resize(1100, 720)
 
         tabs = QTabWidget()
+        products_view = ProductsView()
         tabs.addTab(POSView(), "POS")
-        tabs.addTab(ProductsView(), "Productos")
+        tabs.addTab(products_view, "Productos")
         tabs.addTab(ReportsView(), "Reportes")
         tabs.addTab(ConfigView(), "Configuración")
+        tabs.currentChanged.connect(
+            lambda i: products_view.reload() if tabs.widget(i) is products_view else None
+        )
 
         self.setCentralWidget(tabs)
 
