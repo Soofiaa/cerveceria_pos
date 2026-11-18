@@ -163,26 +163,6 @@ def list_low_stock_products() -> List[Dict[str, Any]]:
         ]
 
 
-def ensure_demo_products():
-    """Crea productos demo solo si la tabla está vacía."""
-    with get_conn() as con:
-        cur = con.cursor()
-        cur.execute("SELECT COUNT(*) FROM products")
-        (count,) = cur.fetchone()
-        if count == 0:
-            cur.executemany("""
-                INSERT INTO products (name, sale_price, purchase_price, barcode)
-                VALUES (?, ?, ?, ?)
-            """, [
-                ("IPA Lata 473ml",      2500, 1200, "780000000001"),
-                ("APA Botella 330ml",   2200, 1000, "780000000002"),
-                ("Stout Lata 473ml",    2800, 1500, "780000000003"),
-                ("Amber Ale Lata 473ml",2400, 1100, "780000000004"),
-                ("Porter Botella 330ml",2300, 1000, "780000000005"),
-                ("Pilsner Lata 473ml",  2100, 950,  "780000000006"),
-            ])
-            con.commit()
-
 
 def delete_product(product_id: int):
     """
@@ -228,8 +208,6 @@ def desactivar_producto(product_id: int) -> None:
       catálogo del POS), pero su fila sigue existiendo, así que se conserva
       intacta la trazabilidad de sale_items y open_ticket_items que lo
       referencian.
-    - Reemplaza a force_delete_product(), que borraba físicamente esas
-      líneas y rompía el historial de ventas ya cobradas.
     """
     with get_conn() as con:
         cur = con.cursor()
@@ -238,40 +216,3 @@ def desactivar_producto(product_id: int) -> None:
             raise ValueError("El producto no existe o ya fue eliminado.")
         con.commit()
 
-
-def force_delete_product(product_id: int):
-    """
-    @deprecated: NO USAR. Reemplazada por desactivar_producto().
-
-    Motivo de la baja: esta función borraba físicamente las líneas de
-    sale_items asociadas al producto para poder eliminarlo, lo que rompía
-    la trazabilidad de ventas ya cobradas (un reporte histórico podía
-    quedar con montos totales que ya no coincidían con su detalle línea a
-    línea). Se conserva el código, sin usarse desde la UI, únicamente como
-    referencia del problema que motivó el cambio a baja lógica.
-
-    Elimina el producto incluso si tiene ventas o está en tickets.
-    ATENCIÓN:
-    - Borra las líneas de ese producto en tickets abiertos.
-    - Borra las líneas de detalle en sale_items.
-    - Los totales de 'sales' se mantienen, pero sin ese detalle.
-    """
-    pid = int(product_id)
-
-    with get_conn() as con:
-        cur = con.cursor()
-        try:
-            # Borrar de tickets abiertos
-            cur.execute("DELETE FROM open_ticket_items WHERE product_id=?", (pid,))
-            # Borrar de líneas de venta
-            cur.execute("DELETE FROM sale_items WHERE product_id=?", (pid,))
-            # Borrar el producto
-            cur.execute("DELETE FROM products WHERE id=?", (pid,))
-
-            if cur.rowcount == 0:
-                raise ValueError("El producto no existe o ya fue eliminado.")
-
-            con.commit()
-        except Exception:
-            con.rollback()
-            raise
