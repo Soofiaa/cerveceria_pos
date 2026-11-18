@@ -137,12 +137,12 @@ def _build_stylesheet(theme_name: str) -> str:
     """
 
     QPushButton[buttonType="primary"] {
-        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f8c86b, stop:1 #f2a72a);
-        border: 1px solid #f2a72a;
-        color: #0f172a;
+        background: {theme["primary"]};
+        border: 1px solid {theme["primary"]};
+        color: white;
     }
     QPushButton[buttonType="primary"]:hover {
-        background-color: #f6b84b;
+        background-color: {theme["secondary"]};
     }
 
     QPushButton[buttonType="danger"] {
@@ -195,12 +195,12 @@ def _build_stylesheet(theme_name: str) -> str:
         border: 1px solid #d1d5db;
         border-radius: 10px;
         padding: 6px 10px;
-        selection-background-color: #f4a506;
-        selection-color: #111827;
+        selection-background-color: {theme["primary"]};
+        selection-color: white;
     }
 
     QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
-        border: 1px solid #f2a72a;
+        border: 1px solid {theme["primary"]};
     }
 
     
@@ -211,12 +211,12 @@ def _build_stylesheet(theme_name: str) -> str:
         border-radius: 10px;
         padding: 4px 8px;
         /* no tocar el icono aquí */
-        selection-background-color: #f4a506;
-        selection-color: #111827;
+        selection-background-color: {theme["primary"]};
+        selection-color: white;
     }
 
     QDateEdit:focus {
-        border: 1px solid #f2a72a;
+        border: 1px solid {theme["primary"]};
     }
 
     /* Solo reubicamos el área del botón, SIN cambiar el icono nativo */
@@ -234,17 +234,17 @@ def _build_stylesheet(theme_name: str) -> str:
     /* ===================== TABLAS ===================== */
     QTableView, QTableWidget {
         background-color: #ffffff;
-        alternate-background-color: #fbf2de;
-        border: 1px solid #eadfc8;
+        alternate-background-color: {theme["background"]};
+        border: 1px solid {theme["secondary"]};
         border-radius: 12px;
-        gridline-color: #eadfc8;
-        selection-background-color: #f2a72a;
-        selection-color: #0f172a;
+        gridline-color: {theme["secondary"]};
+        selection-background-color: {theme["primary"]};
+        selection-color: #ffffff;
     }
 
     QHeaderView::section {
-        background: #f4efe3;
-        color: #4b5563;
+        background: {theme["background"]};
+        color: {theme["text"]};
         padding: 8px;
         border: none;
         font-weight: 800;

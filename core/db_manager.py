@@ -8,15 +8,50 @@ import shutil
 OLD_USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "CerveceriaPOS")
 USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "MiPOS")
 
-def _migrate_db_if_needed():
-    if not os.path.exists(USER_DATA_DIR):
-        os.makedirs(USER_DATA_DIR, exist_ok=True)
+def _migrate_db_if_needed(old_dir=None, new_dir=None):
+    if old_dir is None:
+        old_dir = OLD_USER_DATA_DIR
+    if new_dir is None:
+        new_dir = USER_DATA_DIR
+
+    if not os.path.exists(new_dir):
+        try:
+            os.makedirs(new_dir, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: could not create new data dir {new_dir}: {e}")
+            return
     
-    old_db = os.path.join(OLD_USER_DATA_DIR, "cerveceria.db")
-    new_db = os.path.join(USER_DATA_DIR, "cerveceria.db")
+    old_db = os.path.join(old_dir, "cerveceria.db")
+    new_db = os.path.join(new_dir, "cerveceria.db")
     
     if os.path.exists(old_db) and not os.path.exists(new_db):
-        shutil.copy2(old_db, new_db)
+        try:
+            shutil.copy2(old_db, new_db)
+            
+            # Verify integrity and table consistency
+            with sqlite3.connect(old_db) as con_old:
+                cur_old = con_old.cursor()
+                cur_old.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables_old = sorted([r[0] for r in cur_old.fetchall()])
+                
+            with sqlite3.connect(new_db) as con_new:
+                cur_new = con_new.cursor()
+                res = cur_new.execute("PRAGMA integrity_check;").fetchone()
+                if not res or res[0] != "ok":
+                    raise ValueError(f"Integrity check failed: {res}")
+                cur_new.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables_new = sorted([r[0] for r in cur_new.fetchall()])
+                
+            if tables_old != tables_new:
+                raise ValueError("Table lists do not match between old and new DB.")
+                
+        except (PermissionError, sqlite3.OperationalError, ValueError, Exception) as e:
+            print(f"Warning: Database migration/verification failed ({e}). Leaving old DB intact.")
+            if os.path.exists(new_db):
+                try:
+                    os.remove(new_db)
+                except Exception:
+                    pass
 
 # Ejecutar migración antes de definir DB_PATH
 _migrate_db_if_needed()
