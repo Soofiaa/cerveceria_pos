@@ -16,17 +16,24 @@ DEFAULT_CONFIG = {
     "theme": "neutro"
 }
 
-def load_config():
-    if not os.path.exists(CONFIG_PATH):
-        save_config(DEFAULT_CONFIG)
+def load_config(config_path=None):
+    if config_path is None:
+        config_path = CONFIG_PATH
+    
+    if not os.path.exists(config_path):
+        save_config(DEFAULT_CONFIG, config_path)
         return DEFAULT_CONFIG
     
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         try:
             return {**DEFAULT_CONFIG, **json.load(f)}
         except json.JSONDecodeError:
             return DEFAULT_CONFIG
 
-def save_config(config):
-    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+def save_config(config, config_path=None):
+    if config_path is None:
+        config_path = CONFIG_PATH
+    
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    with open(config_path, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=4, ensure_ascii=False)

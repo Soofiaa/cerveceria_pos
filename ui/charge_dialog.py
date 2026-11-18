@@ -12,8 +12,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
+from core.config import load_config
 from core.utils_format import fmt_money
 from ui.pos.pos_utils import parse_price
+from ui.theme import get_theme
 
 
 class ChargeDialog(QDialog):
@@ -61,11 +63,12 @@ class ChargeDialog(QDialog):
             warn = QLabel(f"⚠ Este cobro dejará stock negativo en:\n{lines}")
             warn.setWordWrap(True)
             warn.setObjectName("StockWarningBanner")
+            theme = get_theme(load_config().get("theme", "neutro"))
             warn.setStyleSheet(
                 "QLabel#StockWarningBanner {"
-                "  background-color: #fff3cd;"
+                f"  background-color: {theme['warning']};"
                 "  color: #7a5b00;"
-                "  border: 1px solid #ffe08a;"
+                f"  border: 1px solid {theme['warning']};"
                 "  border-radius: 6px;"
                 "  padding: 8px 10px;"
                 "}"
