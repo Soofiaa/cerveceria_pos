@@ -1,6 +1,6 @@
-# Cervecería POS
+# Mi POS
 
-Sistema de punto de venta (POS) de escritorio para cervecerías artesanales, desarrollado en Python con PySide6 (Qt) y SQLite. Gestiona ventas, tickets abiertos, productos, control de stock y reportes de caja diaria.
+Mi POS nació como un punto de venta para una cervecería artesanal y se amplió a un POS genérico para cualquier negocio. Sistema de punto de venta (POS) de escritorio genérico, desarrollado en Python con PySide6 (Qt) y SQLite. Gestiona ventas, tickets abiertos, productos, control de stock y reportes de caja diaria.
 
 ---
 

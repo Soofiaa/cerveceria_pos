@@ -3,8 +3,23 @@ import sqlite3
 import os
 
 # === Carpeta del usuario donde se guardarán los datos ===
-USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "CerveceriaPOS")
-os.makedirs(USER_DATA_DIR, exist_ok=True)
+# MIGRACIÓN: De CerveceriaPOS a MiPOS
+import shutil
+OLD_USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "CerveceriaPOS")
+USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "MiPOS")
+
+def _migrate_db_if_needed():
+    if not os.path.exists(USER_DATA_DIR):
+        os.makedirs(USER_DATA_DIR, exist_ok=True)
+    
+    old_db = os.path.join(OLD_USER_DATA_DIR, "cerveceria.db")
+    new_db = os.path.join(USER_DATA_DIR, "cerveceria.db")
+    
+    if os.path.exists(old_db) and not os.path.exists(new_db):
+        shutil.copy2(old_db, new_db)
+
+# Ejecutar migración antes de definir DB_PATH
+_migrate_db_if_needed()
 
 # Ruta absoluta a la base de datos:
 DB_PATH = os.path.join(USER_DATA_DIR, "cerveceria.db")

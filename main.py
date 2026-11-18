@@ -5,148 +5,136 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
 
-from core import db_manager
+from core import db_manager, config
+from ui.theme import get_theme
 from ui.pos.pos_view import POSView
 from ui.products_view import ProductsView
 from ui.reports_view import ReportsView
 
 
 # ==========================================================
-# Paleta clara (única)
+# Paleta clara
 # ==========================================================
-def _build_palette() -> QPalette:
-    """
-    Devuelve una paleta clara pensada para un POS de cervecería.
-
-    Los colores están inspirados en tonos dorados y espumas claras para que
-    toda la interfaz luzca moderna, fresca y claramente identificable con un
-    negocio de cerveza artesanal.
-    """
-
+def _build_palette(theme_name: str) -> QPalette:
+    """Devuelve una paleta según el tema seleccionado."""
+    theme = get_theme(theme_name)
     palette = QPalette()
-    palette.setColor(QPalette.Window, QColor("#fbf7ef"))  # Fondo cálido general
-    palette.setColor(QPalette.Base, QColor("#ffffff"))  # Fondos de inputs/tablas
-    palette.setColor(QPalette.AlternateBase, QColor("#f4efe3"))
-    palette.setColor(QPalette.WindowText, QColor("#1f2937"))
-    palette.setColor(QPalette.Text, QColor("#111827"))
+    palette.setColor(QPalette.Window, QColor(theme["background"]))
+    palette.setColor(QPalette.Base, QColor("#ffffff"))
+    palette.setColor(QPalette.AlternateBase, QColor(theme["background"]))
+    palette.setColor(QPalette.WindowText, QColor(theme["text"]))
+    palette.setColor(QPalette.Text, QColor(theme["text"]))
     palette.setColor(QPalette.Button, QColor("#ffffff"))
-    palette.setColor(QPalette.ButtonText, QColor("#1f2937"))
-    palette.setColor(QPalette.Highlight, QColor("#f2a72a"))  # Dorado principal
-    palette.setColor(QPalette.HighlightedText, QColor("#111827"))
-    palette.setColor(QPalette.Link, QColor("#c26a00"))
-    palette.setColor(QPalette.BrightText, QColor("#ad6200"))
+    palette.setColor(QPalette.ButtonText, QColor(theme["text"]))
+    palette.setColor(QPalette.Highlight, QColor(theme["primary"]))
+    palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
+    palette.setColor(QPalette.Link, QColor(theme["secondary"]))
+    palette.setColor(QPalette.BrightText, QColor(theme["accent"]))
     return palette
 
 
 # ==========================================================
 # Stylesheet claro
 # ==========================================================
-def _build_stylesheet() -> str:
-    """
-    Construye un QSS inspirado en el branding de una cervecería.
-
-    Se prioriza el uso de tonos claros, bordes redondeados y acentos dorados
-    para que todas las pantallas (ventana principal y subventanas) se perciban
-    modernas y coherentes.
-    """
-
-    return """
+def _build_stylesheet(theme_name: str) -> str:
+    """Construye un QSS según el tema seleccionado."""
+    theme = get_theme(theme_name)
+    return f"""
     /* ===================== BASE ===================== */
-    QWidget {
-        background-color: #fdfaf3;
-        color: #1f2937;
+    QWidget {{
+        background-color: {theme["background"]};
+        color: {theme["text"]};
         font-family: "Inter", "Segoe UI", Arial, sans-serif;
         font-size: 11pt;
-    }
+    }}
 
     /* ===================== TABS ===================== */
-    QTabWidget::pane {
-        border: 1px solid #eadfc8;
+    QTabWidget::pane {{
+        border: 1px solid {theme["secondary"]};
         border-radius: 14px;
         padding: 12px;
         background-color: #ffffff;
-    }
-    QTabBar::tab {
-        background: #f4efe3;
-        border: 1px solid #e4d9c5;
+    }}
+    QTabBar::tab {{
+        background: {theme["background"]};
+        border: 1px solid {theme["secondary"]};
         border-radius: 999px;
         padding: 8px 18px;
         margin-right: 8px;
-        color: #4b5563;
+        color: {theme["text"]};
         font-weight: 600;
-    }
-    QTabBar::tab:selected {
-        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f6c058, stop:1 #f2a72a);
-        border: 1px solid #f2a72a;
-        color: #0f172a;
+    }}
+    QTabBar::tab:selected {{
+        background: {theme["primary"]};
+        border: 1px solid {theme["primary"]};
+        color: white;
         font-weight: 800;
-    }
+    }}
 
     /* ===================== SIDEBAR (Tickets abiertos) ===================== */
-    QWidget#Sidebar {
-        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fff4dd, stop:1 #ffe9b6);
-        border: 1px solid #f2a72a;
+    QWidget#Sidebar {{
+        background: {theme["background"]};
+        border: 1px solid {theme["primary"]};
         border-radius: 16px;
         padding: 12px;
-    }
+    }}
 
-    QLabel#SidebarTitle {
-        color: #8b5a1a;
+    QLabel#SidebarTitle {{
+        color: {theme["secondary"]};
         font-size: 18pt;
         font-weight: 900;
         letter-spacing: 0.5px;
-    }
+    }}
 
-    QListWidget#TicketList {
+    QListWidget#TicketList {{
         background-color: transparent;
         border: none;
-        color: #3f3f46;
-    }
-    QListWidget#TicketList::item {
+        color: {theme["text"]};
+    }}
+    QListWidget#TicketList::item {{
         padding: 10px 12px;
         border-radius: 10px;
         margin-bottom: 4px;
-    }
-    QListWidget#TicketList::item:selected {
-        background-color: #f2a72a;
-        color: #0f172a;
-    }
+    }}
+    QListWidget#TicketList::item:selected {{
+        background-color: {theme["primary"]};
+        color: white;
+    }}
 
     /* ===================== TITULOS Y TEXTOS ===================== */
-    QLabel#SectionTitle {
+    QLabel#SectionTitle {{
         font-size: 18pt;
         font-weight: 900;
-        color: #c26a00;
+        color: {theme["secondary"]};
         letter-spacing: 0.4px;
-    }
-    QLabel#HintLabel {
-        color: #6b7280;
-    }
-    QLabel#TotalsBadge {
-        background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #fff4dd, stop:1 #ffe7b0);
-        border: 1px solid #f2a72a;
+    }}
+    QLabel#HintLabel {{
+        color: {theme["text"]};
+    }}
+    QLabel#TotalsBadge {{
+        background: {theme["background"]};
+        border: 1px solid {theme["primary"]};
         padding: 20px 24px;
         border-radius: 16px;
-        color: #8b5a1a;
+        color: {theme["secondary"]};
         font-size: 22pt;
         font-weight: 900;
-    }
+    }}
 
     /* ===================== BOTONES ===================== */
-    QPushButton {
-        background-color: #f4efe3;
-        border: 1px solid #dfd4bf;
+    QPushButton {{
+        background-color: {theme["background"]};
+        border: 1px solid {theme["secondary"]};
         border-radius: 12px;
         padding: 9px 16px;
         font-weight: 700;
-        color: #1f2937;
-    }
-    QPushButton:hover {
-        background-color: #ebe2ce;
-    }
-    QPushButton:pressed {
-        background-color: #dfd4bf;
-    }
+        color: {theme["text"]};
+    }}
+    QPushButton:hover {{
+        background-color: {theme["primary"]};
+        color: white;
+    }}
+    """
 
     QPushButton[buttonType="primary"] {
         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f8c86b, stop:1 #f2a72a);
@@ -264,7 +252,7 @@ def _build_stylesheet() -> str:
 
     /* ===================== GROUPBOX ===================== */
     QGroupBox {
-        border: 1px solid #e4d9c5;
+        border: 1px solid {theme["secondary"]};
         border-radius: 12px;
         margin-top: 18px;
         background-color: #ffffff;
@@ -273,22 +261,21 @@ def _build_stylesheet() -> str:
         subcontrol-origin: margin;
         left: 16px;
         padding: 0 6px;
-        color: #c26a00;
+        color: {theme["secondary"]};
         font-weight: 800;
-        background-color: #fdfaf3;  /* mismo fondo general para que se "corte" el borde */
+        background-color: {theme["background"]};
     }
     
-
     /* ===================== DIALOGOS ===================== */
     QDialog {
         background-color: #ffffff;
-        border: 1px solid #eadfc8;
+        border: 1px solid {theme["secondary"]};
         border-radius: 14px;
     }
     QDialog QLabel#DialogTitle {
         font-size: 16pt;
         font-weight: 800;
-        color: #1f2937;
+        color: {theme["text"]};
     }
 
     QMessageBox {
@@ -296,7 +283,7 @@ def _build_stylesheet() -> str:
         border-radius: 14px;
     }
     QMessageBox QLabel {
-        color: #1f2937;
+        color: {theme["text"]};
     }
     QMessageBox QPushButton {
         min-width: 94px;
@@ -311,7 +298,8 @@ def _build_stylesheet() -> str:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Cervecería POS")
+        conf = config.load_config()
+        self.setWindowTitle(conf["business_name"])
         self.resize(1100, 720)
 
         tabs = QTabWidget()
@@ -327,6 +315,7 @@ class MainWindow(QMainWindow):
 # ==========================================================
 def main() -> None:
     db_manager.bootstrap()
+    conf = config.load_config()
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
@@ -335,8 +324,9 @@ def main() -> None:
     font.setHintingPreference(QFont.PreferFullHinting)
     app.setFont(font)
 
-    app.setPalette(_build_palette())
-    app.setStyleSheet(_build_stylesheet())
+    theme = conf.get("theme", "neutro")
+    app.setPalette(_build_palette(theme))
+    app.setStyleSheet(_build_stylesheet(theme))
 
     window = MainWindow()
     window.show()
