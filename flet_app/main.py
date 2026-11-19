@@ -22,10 +22,14 @@ Reglas que este archivo cumple:
   border_color esta deprecado: se usa border=OutlineInputBorder(...).
 - Fase 2: la barra lateral cambia entre POS y Productos
   (flet_app/productos_view.py); al volver al POS la grilla se actualiza.
+- La grilla de productos solo aparece al escribir en el buscador (con
+  muchos productos llenaria la pantalla) y se esconde al agregar.
 """
 
+import asyncio
 import os
 import sys
+import webbrowser
 
 import flet as ft
 
@@ -37,6 +41,7 @@ from core import db_manager  # noqa: E402
 from core import product_service as ps  # noqa: E402
 from core import sales_service as ss  # noqa: E402
 from core import ticket_service as ts  # noqa: E402
+from flet_app import boletas as bol  # noqa: E402
 from flet_app.productos_view import ProductosView  # noqa: E402
 
 # Paleta "lila" de la maqueta moderna (Mi Pos Maqueta Interfaz Moderna).
@@ -132,6 +137,21 @@ def find_product(query):
     return "none", None
 
 
+def search_grid_products(query, limit=GRID_LIMIT):
+    """Productos que la grilla muestra para el texto del buscador.
+
+    Con el buscador vacio no muestra nada: con muchos productos la grilla
+    llenaria la pantalla, asi que solo aparece al buscar. Devuelve
+    (productos_a_mostrar, total_de_coincidencias). "Producto comun" nunca
+    aparece.
+    """
+    q = (query or "").strip()
+    if not q:
+        return [], 0
+    matches = [p for p in ps.list_products(q) if not is_common_product(p)]
+    return matches[:limit], len(matches)
+
+
 def items_total(items):
     """Total del ticket calculado en memoria (no toca updated_at)."""
     return sum(int(i["line_total"]) for i in items)
@@ -225,6 +245,9 @@ def main(page: ft.Page):
     page.padding = 0
     # Semilla lila: radios, switches y focos toman el primario del tema.
     page.theme = ft.Theme(color_scheme_seed=PRIMARY, font_family="Segoe UI")
+    # Siempre claro: con Windows en modo oscuro los controles sin color
+    # propio (desplegables, menus) salian con texto casi blanco.
+    page.theme_mode = ft.ThemeMode.LIGHT
     page.window.width = 1280
     page.window.height = 720
     page.window.min_width = 1000
@@ -235,6 +258,8 @@ def main(page: ft.Page):
     business_name = (cfg.get("business_name") or "Mi POS").strip() or "Mi POS"
 
     current_ticket_id = None
+    # Ultima venta cobrada en esta sesion (para reimprimir o reenviar).
+    last_sale = {}
 
     # ---------- Componentes ----------
     search_input = ft.TextField(
@@ -260,11 +285,9 @@ def main(page: ft.Page):
         expand=True, max_extent=190, child_aspect_ratio=2.1, spacing=9, run_spacing=9
     )
     grid_info = ft.Text("", color=MUTED, size=12, visible=False)
-    grid_empty = ft.Text(
-        "No hay productos para mostrar. Agrégalos en la pestaña Productos de la app principal.",
-        color=MUTED,
-        visible=False,
-    )
+    grid_empty = ft.Text("", color=MUTED, visible=False)
+    # La grilla solo se ve mientras hay texto en el buscador.
+    grid_box = ft.Container(content=grid, height=170, visible=False)
     def _head(text, numeric=False):
         return ft.DataColumn(
             ft.Text(text.upper(), size=11, weight=ft.FontWeight.W_800, color=MUTED),
@@ -290,7 +313,7 @@ def main(page: ft.Page):
             [
                 ft.Text("Ticket vacío.", color=MUTED, size=14, weight=ft.FontWeight.W_600),
                 ft.Text(
-                    "Escanea o busca un producto, o tócalo en la grilla.",
+                    "Escanea un código o escribe el nombre: los productos aparecen al buscar.",
                     color=MUTED,
                     size=13,
                 ),
@@ -599,15 +622,20 @@ def main(page: ft.Page):
     # ---------- Grilla de productos ----------
     def make_grid_handler(product):
         async def handler(e):
+            # Como al escanear: se agrega, el buscador se limpia y la
+            # grilla se esconde para seguir con el siguiente producto.
+            search_input.value = ""
+            refresh_grid()
             add_product(product)
             await focus_search()
 
         return handler
 
     def refresh_grid():
-        # "Producto comun" es un producto especial de precio 0, no va en la grilla.
-        products = [p for p in ps.list_products("") if not is_common_product(p)]
-        shown = products[:GRID_LIMIT]
+        # Solo muestra coincidencias del texto escrito; vacio = sin grilla.
+        q = (search_input.value or "").strip()
+        shown, total_matches = search_grid_products(q)
+
         def card(p):
             stock = int(p.get("stock") or 0)
             low = stock <= int(p.get("min_stock") or 0)
@@ -646,13 +674,23 @@ def main(page: ft.Page):
                 padding=10,
                 on_click=make_grid_handler(p),
                 ink=True,
-                tooltip=f'Agregar {p["name"]}',
             )
 
         grid.controls = [card(p) for p in shown]
-        grid_empty.visible = not products
-        grid_info.visible = len(products) > GRID_LIMIT
-        grid_info.value = f"Mostrando {GRID_LIMIT} de {len(products)} productos. Busca por nombre o código para ver el resto."
+        grid_box.visible = bool(shown)
+        # Con pocos resultados basta una fila; si no, dos filas con scroll.
+        grid_box.height = 82 if len(shown) <= 3 else 170
+        grid_empty.visible = bool(q) and total_matches == 0
+        grid_empty.value = f'Sin resultados para "{q}".'
+        grid_info.visible = total_matches > GRID_LIMIT
+        grid_info.value = (
+            f"Mostrando {GRID_LIMIT} de {total_matches} coincidencias. "
+            "Escribe más del nombre o el código para acotar."
+        )
+
+    def on_search_change(e):
+        refresh_grid()
+        page.update()
 
     def add_product(product):
         ensure_ticket()
@@ -685,6 +723,7 @@ def main(page: ft.Page):
             show_message(f"No encontrado: {q}")
             return
         search_input.value = ""
+        refresh_grid()
         if kind == "one":
             add_product(result)
             await focus_search()
@@ -720,6 +759,7 @@ def main(page: ft.Page):
         open_dialog(dlg)
 
     search_input.on_submit = add_item_by_search
+    search_input.on_change = on_search_change
 
     # ---------- Cobro ----------
     def after_charge():
@@ -732,6 +772,325 @@ def main(page: ft.Page):
             current_ticket_id = ts.create_ticket(f"Ticket {get_next_ticket_number()}")
         stock_bar.visible = False
         refresh_ui()
+
+    # ---------- Boleta (comprobante interno): imprimir y enviar ----------
+    def _field(label, value="", **kwargs):
+        return ft.TextField(
+            label=label,
+            value="" if value is None else str(value),
+            color=TEXT,
+            label_style=ft.TextStyle(color=MUTED),
+            bgcolor=WHITE,
+            border=_outline(BORDER),
+            **kwargs,
+        )
+
+    def receipt_for(sale_id, received):
+        return bol.build_receipt(sale_id, received=received)
+
+    async def print_sale(sale_id, received):
+        _cfg, boleta_cfg, _smtp = bol.load_settings()
+        try:
+            data = receipt_for(sale_id, received)
+            await asyncio.to_thread(bol.print_receipt, data, boleta_cfg)
+        except bol.BoletaError as exc:
+            show_message(f"No se pudo imprimir: {exc}")
+            return
+        except Exception as exc:  # driver o cola de impresion de Windows
+            show_message(f"No se pudo imprimir: {exc}")
+            return
+        show_message(f"Comprobante {sale_id} enviado a imprimir.")
+
+    def ask_email_sale(sale_id, received):
+        _cfg, _boleta, smtp_cfg = bol.load_settings()
+        to_input = _field("Correo del cliente", autofocus=True, keyboard_type=ft.KeyboardType.EMAIL)
+        status = ft.Text("", color=ERROR)
+        dlg = ft.AlertDialog(
+            title=ft.Text("Enviar comprobante por correo", color=TEXT),
+            bgcolor=WHITE,
+        )
+        smtp_ok = bol.smtp_is_configured(smtp_cfg)
+        hint = (
+            f'Se envía desde {smtp_cfg.get("sender") or smtp_cfg.get("user")} con el PDF adjunto.'
+            if smtp_ok
+            else "El envío directo no está configurado: usa «Abrir programa de correo» "
+            "o actívalo en Configuración."
+        )
+        dlg.content = ft.Column(
+            [to_input, ft.Text(hint, color=MUTED, size=12), status], tight=True, width=380
+        )
+
+        def validate():
+            to = (to_input.value or "").strip()
+            if not bol.is_valid_email(to):
+                status.value = "Escribe un correo válido, por ejemplo cliente@correo.cl."
+                page.update()
+                return None
+            return to
+
+        async def send_smtp(e):
+            to = validate()
+            if to is None:
+                return
+            send_btn.disabled = True
+            status.color = MUTED
+            status.value = "Enviando…"
+            page.update()
+            try:
+                data = receipt_for(sale_id, received)
+                pdf_path = bol.build_pdf(data, paper_mm=80)
+                await asyncio.to_thread(bol.send_email_smtp, smtp_cfg, to, data, pdf_path)
+            except bol.BoletaError as exc:
+                send_btn.disabled = False
+                status.color = ERROR
+                status.value = str(exc)
+                page.update()
+                return
+            close_dialog(dlg)
+            show_message(f"Comprobante {sale_id} enviado a {to}.")
+
+        def open_mail_client(e):
+            to = validate()
+            if to is None:
+                return
+            data = receipt_for(sale_id, received)
+            webbrowser.open(bol.mailto_url(to, data))
+            close_dialog(dlg)
+
+        send_btn = ft.FilledButton(
+            "Enviar", on_click=send_smtp, style=_state_style(PRIMARY, WHITE, radius=10),
+            disabled=not smtp_ok,
+        )
+        to_input.on_submit = send_smtp if smtp_ok else open_mail_client
+        dlg.actions = [
+            send_btn,
+            ft.TextButton("Abrir programa de correo", on_click=open_mail_client,
+                          style=ft.ButtonStyle(color=PRIMARY)),
+            ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg),
+                          style=ft.ButtonStyle(color=PRIMARY)),
+        ]
+        open_dialog(dlg)
+
+    def show_sale_done(sale_id, summary, received):
+        """Aviso de venta cobrada con opciones de comprobante.
+
+        Aceptar tiene el foco: Enter cierra y la cajera sigue escaneando.
+        Queda guardada como "ultimo comprobante" para reimprimir o enviar
+        despues, si la cajera cerro el aviso sin hacerlo.
+        """
+        last_sale.update(sale_id=sale_id, summary=summary, received=received)
+        last_receipt_btn.visible = True
+        dlg = ft.AlertDialog(
+            title=ft.Text("Venta cobrada", color=TEXT),
+            content=ft.Text(summary, color=TEXT),
+            bgcolor=WHITE,
+        )
+
+        async def do_print(e):
+            close_dialog(dlg)
+            await print_sale(sale_id, received)
+
+        def do_email(e):
+            close_dialog(dlg)
+            ask_email_sale(sale_id, received)
+
+        actions = [
+            ft.TextButton("Imprimir comprobante", icon=ft.Icons.PRINT, on_click=do_print,
+                          style=ft.ButtonStyle(color=PRIMARY)),
+        ]
+        # El correo es opcional: solo aparece si se activo en Configuracion.
+        _cfg, _boleta, smtp_cfg = bol.load_settings()
+        if bol.email_enabled(smtp_cfg):
+            actions.append(
+                ft.TextButton("Enviar por correo", icon=ft.Icons.EMAIL_OUTLINED, on_click=do_email,
+                              style=ft.ButtonStyle(color=PRIMARY))
+            )
+        actions.append(
+            ft.FilledButton("Aceptar", autofocus=True, on_click=lambda e: close_dialog(dlg),
+                            style=_state_style(PRIMARY, WHITE, radius=10))
+        )
+        dlg.actions = actions
+        open_dialog(dlg)
+
+    def open_settings_dialog(e=None):
+        """Configuracion: impresora de boletas y correo (opcional)."""
+        _cfg, boleta_cfg, smtp_cfg = bol.load_settings()
+        printers = bol.list_windows_printers()
+        current_printer = boleta_cfg.get("printer") or bol.default_windows_printer()
+        mode = ft.Dropdown(
+            label="Cómo imprimir",
+            value=boleta_cfg.get("print_mode") or "windows",
+            options=[ft.DropdownOption(key=k, text=v) for k, v in bol.PRINT_MODES.items()],
+            width=380,
+        )
+        printer = ft.Dropdown(
+            label="Impresora de Windows",
+            value=current_printer if current_printer in printers else None,
+            options=[ft.DropdownOption(key=p, text=p) for p in printers],
+            width=380,
+        )
+        paper = ft.Dropdown(
+            label="Ancho de papel",
+            value=str(boleta_cfg.get("paper_mm") or 80),
+            options=[ft.DropdownOption(key="80", text="80 mm"), ft.DropdownOption(key="58", text="58 mm")],
+            width=180,
+        )
+        host = _field("IP de la térmica (red)", boleta_cfg.get("host"), width=240)
+        port = _field("Puerto", boleta_cfg.get("port") or 9100, width=120,
+                      keyboard_type=ft.KeyboardType.NUMBER)
+        net_row = ft.Row([host, port])
+        smtp_host = _field("Servidor SMTP", smtp_cfg.get("host"), width=260)
+        smtp_port = _field("Puerto", smtp_cfg.get("port"), width=100, keyboard_type=ft.KeyboardType.NUMBER)
+        smtp_sec = ft.Dropdown(
+            label="Seguridad",
+            value=smtp_cfg.get("security") or "starttls",
+            options=[ft.DropdownOption(key="starttls", text="STARTTLS (587)"),
+                     ft.DropdownOption(key="ssl", text="SSL (465)")],
+            width=380,
+        )
+        smtp_user = _field("Usuario (correo de envío)", smtp_cfg.get("user"), width=380)
+        smtp_pass = _field(
+            "Contraseña de aplicación",
+            "",
+            width=380,
+            password=True,
+            can_reveal_password=True,
+            hint_text="Guardada" if smtp_cfg.get("password_dpapi") else "",
+            hint_style=ft.TextStyle(color=MUTED),
+        )
+        msg = ft.Text("", color=ERROR)
+        email_on = ft.Checkbox(
+            label="Enviar comprobantes por correo (opcional)",
+            value=bol.email_enabled(smtp_cfg),
+            label_style=ft.TextStyle(color=TEXT),
+        )
+        email_box = ft.Column(
+            [
+                ft.Text(
+                    "Gmail: smtp.gmail.com, STARTTLS 587 y una contraseña de aplicación. "
+                    "La contraseña se guarda cifrada con la protección de Windows.",
+                    color=MUTED, size=12,
+                ),
+                ft.Row([smtp_host, smtp_port]),
+                smtp_sec, smtp_user, smtp_pass,
+            ],
+            tight=True,
+        )
+
+        def sync_visibility(e=None):
+            net_row.visible = mode.value == "escpos_red"
+            printer.visible = mode.value != "escpos_red"
+            email_box.visible = bool(email_on.value)
+            page.update()
+
+        mode.on_select = sync_visibility
+        email_on.on_change = sync_visibility
+
+        def collect():
+            try:
+                port_n = int(parse_price(port.value) or 9100)
+                smtp_port_n = int(parse_price(smtp_port.value) or 587)
+            except ValueError:
+                port_n, smtp_port_n = 9100, 587
+            new_boleta = {
+                "print_mode": mode.value or "windows",
+                "printer": printer.value or "",
+                "host": (host.value or "").strip(),
+                "port": port_n,
+                "paper_mm": int(paper.value or 80),
+            }
+            new_smtp = {
+                "enabled": bool(email_on.value),
+                "host": (smtp_host.value or "").strip(),
+                "port": smtp_port_n,
+                "security": smtp_sec.value or "starttls",
+                "user": (smtp_user.value or "").strip(),
+                "sender": (smtp_user.value or "").strip(),
+                "password_dpapi": smtp_cfg.get("password_dpapi") or "",
+            }
+            if smtp_pass.value:
+                new_smtp["password_dpapi"] = bol.protect_password(smtp_pass.value)
+            return new_boleta, new_smtp
+
+        def save(e):
+            new_boleta, new_smtp = collect()
+            bol.save_settings(boleta=new_boleta, smtp=new_smtp)
+            close_dialog(dlg)
+            show_message("Configuración guardada.")
+
+        async def test_print(e):
+            new_boleta, _ = collect()
+            data = {
+                "business_name": (core_config.load_config().get("business_name") or "Mi POS"),
+                "rut": "", "address": "", "phone": "",
+                "sale_id": "PRUEBA", "created_at": "",
+                "items": [{"name": "Prueba de impresión", "qty": 1, "unit_price": 0, "line_total": 0}],
+                "total": 0, "pay_method": "efectivo", "pay_label": "Efectivo",
+                "received": None, "change": None,
+            }
+            msg.color = MUTED
+            msg.value = "Imprimiendo prueba…"
+            page.update()
+            try:
+                await asyncio.to_thread(bol.print_receipt, data, new_boleta)
+            except Exception as exc:
+                msg.color = ERROR
+                msg.value = f"No se pudo imprimir: {exc}"
+                page.update()
+                return
+            msg.color = PRIMARY
+            msg.value = "Prueba enviada a la impresora."
+            page.update()
+
+        no_printers = ft.Text(
+            "Windows no muestra ninguna impresora. Conecta la impresora de boletas, "
+            "instala el programa (driver) que trae y vuelve a abrir esta ventana.",
+            color=ERROR, size=12, visible=not printers,
+        )
+        dlg = ft.AlertDialog(
+            title=ft.Text("Configuración", color=TEXT),
+            bgcolor=WHITE,
+            content=ft.Column(
+                [
+                    _caps("Impresora de boletas"),
+                    ft.Text(
+                        "Es la impresora térmica de rollo (80 o 58 mm) de la caja. "
+                        "Conéctala, instala el driver que trae y elígela en la lista: "
+                        "suele llamarse POS-80, XP-80C, EPSON TM-T20 o similar. "
+                        "Si no sabes cuál es, deja «Impresora de Windows» y usa "
+                        "«Imprimir prueba».",
+                        color=MUTED, size=12,
+                    ),
+                    mode, printer, no_printers, net_row, paper,
+                    ft.Text(
+                        "Imprime un comprobante interno de venta: no es boleta electrónica del SII.",
+                        color=MUTED, size=12,
+                    ),
+                    ft.Divider(color=BORDER),
+                    _caps("Correo (opcional)"),
+                    email_on,
+                    email_box,
+                ],
+                tight=True,
+                width=400,
+                scroll=ft.ScrollMode.AUTO,
+                height=400,
+            ),
+        )
+        # El estado (prueba de impresion) queda siempre a la vista, fuera
+        # del area con scroll.
+        dlg.content = ft.Column([dlg.content, msg], tight=True, width=400)
+        dlg.actions = [
+            ft.TextButton("Imprimir prueba", icon=ft.Icons.PRINT, on_click=test_print,
+                          style=ft.ButtonStyle(color=PRIMARY)),
+            ft.FilledButton("Guardar", on_click=save, style=_state_style(PRIMARY, WHITE, radius=10)),
+            ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg),
+                          style=ft.ButtonStyle(color=PRIMARY)),
+        ]
+        net_row.visible = mode.value == "escpos_red"
+        printer.visible = mode.value != "escpos_red"
+        email_box.visible = bool(email_on.value)
+        open_dialog(dlg)
 
     def open_charge_dialog(e):
         try:
@@ -840,7 +1199,11 @@ def main(page: ft.Page):
                     return
                 close_dialog(dlg)
                 after_charge()
-                show_message(charge_summary(sale_id, method, received - total, sale_warnings))
+                show_sale_done(
+                    sale_id,
+                    charge_summary(sale_id, method, received - total, sale_warnings),
+                    received if method == "efectivo" else None,
+                )
 
             metodo.on_change = on_method_change
             recibido.on_change = lambda e: update_charge_state()
@@ -899,7 +1262,7 @@ def main(page: ft.Page):
                 ft.Row([search_input]),
                 grid_info,
                 grid_empty,
-                ft.Container(content=grid, height=170),
+                grid_box,
             ],
             spacing=10,
         )
@@ -951,6 +1314,17 @@ def main(page: ft.Page):
         height=56,
     )
 
+    # Reabre el aviso de la ultima venta para imprimir o enviar el comprobante.
+    last_receipt_btn = ft.TextButton(
+        "Último comprobante",
+        icon=ft.Icons.RECEIPT_LONG,
+        visible=False,
+        on_click=lambda e: show_sale_done(
+            last_sale["sale_id"], last_sale["summary"], last_sale["received"]
+        ),
+        style=ft.ButtonStyle(color=PRIMARY, shape=ft.RoundedRectangleBorder(radius=10)),
+    )
+
     def _sum_row(label, value):
         return ft.Row(
             [ft.Text(label, color=MUTED, size=13.5), value],
@@ -971,6 +1345,7 @@ def main(page: ft.Page):
                     color=MUTED,
                     size=12,
                 ),
+                last_receipt_btn,
             ],
             spacing=6,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -1082,7 +1457,19 @@ def main(page: ft.Page):
         border=ft.Border.only(bottom=ft.BorderSide(width=1, color=BORDER)),
         padding=ft.Padding.symmetric(horizontal=16, vertical=10),
         content=ft.Row(
-            [brand, ft.Container(width=24), nav_pos_btn, nav_prod_btn],
+            [
+                brand,
+                ft.Container(width=24),
+                nav_pos_btn,
+                nav_prod_btn,
+                ft.Container(expand=True),
+                ft.TextButton(
+                    "Configuración",
+                    icon=ft.Icons.SETTINGS_OUTLINED,
+                    on_click=open_settings_dialog,
+                    style=ft.ButtonStyle(color=MUTED, shape=ft.RoundedRectangleBorder(radius=10)),
+                ),
+            ],
             spacing=6,
         ),
     )

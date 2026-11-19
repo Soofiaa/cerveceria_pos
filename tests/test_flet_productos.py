@@ -175,7 +175,7 @@ def test_nav_switches_views(temp_db):
     top_bar, body = root.controls
     tickets_box = body.controls[0]
     content_area = body.controls[1].content
-    _brand, _gap, pos_btn, prod_btn = top_bar.content.controls
+    _brand, _gap, pos_btn, prod_btn = top_bar.content.controls[:4]
     # Al inicio: el POS (columna principal + tarjeta del total).
     assert len(content_area.controls) == 2
     assert tickets_box.visible is not False
@@ -324,3 +324,95 @@ def test_export_saves_to_chosen_path(temp_db, monkeypatch):
         isinstance(c, ft.AlertDialog) and "guardada" in c.content.value
         for c in page.overlay
     )
+
+
+def test_pos_grilla_solo_aparece_al_buscar(temp_db):
+    ps.create_product("Cerveza Rubia", 1500, barcode="7801", stock=50)
+    ps.create_product("Cerveza Negra", 1800, barcode="7802", stock=50)
+    page = FakePage()
+    pos_main.main(page)
+    root = page.controls[0]
+    content_area = root.controls[1].controls[1].content
+    main_col = content_area.controls[0]
+    search_col = main_col.controls[0].content
+    search_input = search_col.controls[0].controls[0]
+    grid_box = search_col.controls[3]
+    grid = grid_box.content
+
+    # Al abrir, con el buscador vacio, no se muestra ningun producto.
+    assert grid_box.visible is False
+    assert grid.controls == []
+
+    # Al escribir aparecen solo las coincidencias.
+    search_input.value = "cerveza"
+    search_input.on_change(None)
+    assert grid_box.visible is True
+    assert len(grid.controls) == 2
+
+    # Sin coincidencias: grilla oculta y aviso de "Sin resultados".
+    search_input.value = "xyzzy"
+    search_input.on_change(None)
+    assert grid_box.visible is False
+    assert search_col.controls[2].visible is True
+    assert "xyzzy" in search_col.controls[2].value
+
+    # Tocar un resultado lo agrega, limpia el buscador y esconde la grilla.
+    search_input.value = "negra"
+    search_input.on_change(None)
+    _click(grid.controls[0])
+    assert search_input.value == ""
+    assert grid_box.visible is False
+    from core import ticket_service as ts
+    names = [i["product_name"] for t in ts.list_open_tickets() for i in ts.list_items(t["id"])]
+    assert names == ["Cerveza Negra"]
+
+
+def _cobrar_una_venta(tmp_path, monkeypatch, email_enabled):
+    """Escanea, cobra con 5.000 y devuelve (aviso de venta, boton Ultimo)."""
+    from core import config as core_config
+    from flet_app import boletas as bol
+
+    # Config temporal: nunca se lee ni se escribe la config real del usuario.
+    monkeypatch.setattr(core_config, "CONFIG_PATH", str(tmp_path / "config.json"))
+    bol.save_settings(smtp={"enabled": email_enabled})
+    ps.create_product("Cerveza Rubia", 1500, barcode="7801", stock=50)
+    page = FakePage()
+    pos_main.main(page)
+    root = page.controls[0]
+    content_area = root.controls[1].controls[1].content
+    search_input = content_area.controls[0].controls[0].content.controls[0].controls[0]
+    summary_col = content_area.controls[1].controls[0].content
+    cobrar = summary_col.controls[5]
+    ultimo = summary_col.controls[7]
+    assert ultimo.visible is False
+
+    search_input.value = "7801"
+    asyncio.run(search_input.on_submit(None))
+    _click(cobrar)
+    charge = _open_dialogs(page)[-1]
+    recibido = next(
+        c for c in charge.content.controls
+        if isinstance(c, ft.TextField) and c.label == "Monto recibido"
+    )
+    recibido.value = "5000"
+    recibido.on_change(None)
+    asyncio.run(recibido.on_submit(None))
+
+    return _open_dialogs(page)[-1], ultimo
+
+
+def test_cobro_ofrece_imprimir_comprobante_sin_correo_por_defecto(temp_db, tmp_path, monkeypatch):
+    done, ultimo = _cobrar_una_venta(tmp_path, monkeypatch, email_enabled=False)
+    assert done.title.value == "Venta cobrada"
+    assert "Vuelto: $3.500" in done.content.value
+    assert [b.content for b in done.actions] == ["Imprimir comprobante", "Aceptar"]
+    assert ultimo.visible is True
+
+
+def test_cobro_ofrece_correo_si_esta_activado(temp_db, tmp_path, monkeypatch):
+    done, _ultimo = _cobrar_una_venta(tmp_path, monkeypatch, email_enabled=True)
+    assert [b.content for b in done.actions] == [
+        "Imprimir comprobante",
+        "Enviar por correo",
+        "Aceptar",
+    ]

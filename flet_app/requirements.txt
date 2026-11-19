@@ -1,1 +1,4 @@
 flet==1.1.2
+# Comprobante de venta: PDF (fpdf2) e impresoras/DPAPI de Windows (pywin32).
+fpdf2==2.8.1
+pywin32==308

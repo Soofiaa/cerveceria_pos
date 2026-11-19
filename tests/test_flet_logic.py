@@ -16,6 +16,7 @@ from flet_app.main import (
     items_total,
     low_stock_remaining,
     parse_price,
+    search_grid_products,
 )
 
 
@@ -114,3 +115,28 @@ def test_low_stock_remaining(temp_db):
     mucha = ps.find_product_by_exact_code_or_name("Mucha")
     ts.add_item(tid, mucha["id"], 1, 100)
     assert low_stock_remaining(mucha, ts.list_items(tid)) is None
+
+
+def test_search_grid_products_vacio_no_muestra_nada(temp_db):
+    _productos()
+    assert search_grid_products("") == ([], 0)
+    assert search_grid_products("   ") == ([], 0)
+    assert search_grid_products(None) == ([], 0)
+
+
+def test_search_grid_products_filtra_y_excluye_comun(temp_db):
+    _productos()
+    shown, total = search_grid_products("cerveza")
+    assert total == 2
+    assert sorted(p["name"] for p in shown) == ["Cerveza Negra", "Cerveza Rubia"]
+    assert search_grid_products("7802")[1] == 1
+    assert search_grid_products("común") == ([], 0)
+    assert search_grid_products("xyzzy") == ([], 0)
+
+
+def test_search_grid_products_limita_resultados(temp_db):
+    for i in range(15):
+        ps.create_product(name=f"Relleno {i:02d}", sale_price=1000 + i)
+    shown, total = search_grid_products("Relleno", limit=12)
+    assert total == 15
+    assert len(shown) == 12
