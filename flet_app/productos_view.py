@@ -29,6 +29,8 @@ MUTED = "#5d6d7e"
 ERROR = "#a93226"
 WARN_BG = "#fff4d6"
 WARN_TEXT = "#6e4500"
+SURFACE2 = "#efe3f1"
+BORDER = "#e2d0e6"
 
 COMMON_PRODUCT_NAME = "Producto común"
 
@@ -64,8 +66,8 @@ def is_common_product(product):
     return (product.get("name") or "").strip().lower() == COMMON_PRODUCT_NAME.lower()
 
 
-def _state_style(bg, fg, radius=12):
-    """Boton con radio 12, como en el POS."""
+def _state_style(bg, fg, radius=10):
+    """Boton con radio 10, como en la maqueta."""
     return ft.ButtonStyle(
         shape=ft.RoundedRectangleBorder(radius=radius),
         bgcolor=bg,
@@ -85,12 +87,23 @@ class ProductosView(ft.Column):
             hint_text="Buscar por nombre o código",
             color=TEXT,
             hint_style=ft.TextStyle(color=MUTED),
-            bgcolor=WHITE,
+            bgcolor=SURFACE2,
+            filled=True,
+            prefix_icon=ft.Icons.SEARCH,
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    side=ft.BorderSide(width=1, color=BORDER), border_radius=10
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    side=ft.BorderSide(width=2, color=PRIMARY), border_radius=10
+                ),
+            },
             on_submit=lambda e: self.load_data(),
             expand=True,
         )
+        # Switch no tiene label_style en Flet 1.1.2: la etiqueta va aparte
+        # para que se lea (antes quedaba texto claro sobre fondo claro).
         self.chk_inactivos = ft.Switch(
-            label="Ver inactivos",
             value=False,
             on_change=lambda e: self.load_data(),
         )
@@ -127,8 +140,12 @@ class ProductosView(ft.Column):
                         "Buscar",
                         on_click=lambda e: self.load_data(),
                         style=_state_style(PRIMARY, WHITE),
+                        height=44,
                     ),
-                    self.chk_inactivos,
+                    ft.Row(
+                        [self.chk_inactivos, ft.Text("Ver inactivos", color=TEXT, size=13.5)],
+                        spacing=4,
+                    ),
                 ]
             ),
             ft.Row(
@@ -147,8 +164,13 @@ class ProductosView(ft.Column):
             ),
             self.count_lbl,
             self.empty_lbl,
-            # Scroll horizontal: la columna Acciones nunca queda cortada.
-            ft.Row([self.table], scroll=ft.ScrollMode.AUTO, expand=True),
+            # Scroll horizontal (Acciones nunca queda cortada) y vertical; la
+            # tabla queda arriba, no centrada con un hueco encima.
+            ft.Column(
+                [ft.Row([self.table], scroll=ft.ScrollMode.AUTO)],
+                scroll=ft.ScrollMode.AUTO,
+                expand=True,
+            ),
         ]
 
     async def focus_search(self):

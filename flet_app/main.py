@@ -39,17 +39,25 @@ from core import sales_service as ss  # noqa: E402
 from core import ticket_service as ts  # noqa: E402
 from flet_app.productos_view import ProductosView  # noqa: E402
 
+# Paleta "lila" de la maqueta moderna (Mi Pos Maqueta Interfaz Moderna).
+# TEXT y MUTED se mantienen mas oscuros que en la maqueta para que el
+# texto secundario cumpla contraste >= 4.5:1 sobre blanco.
 TEXT = "#1c2833"
 PRIMARY = "#6c3483"
-BG = "#f8f2fb"
+BG = "#f6eff7"
 WHITE = "#ffffff"
+SURFACE2 = "#efe3f1"
+BORDER = "#e2d0e6"
 MUTED = "#5d6d7e"
 ICON = "#34495e"
 ERROR = "#a93226"
 WARN_BG = "#fff4d6"
 WARN_TEXT = "#6e4500"
+WARN_BADGE = "#f1c40f"
 DISABLED_BG = "#d6d1db"
 DISABLED_TEXT = "#5f5966"
+# Montos en monoespaciada, como la maqueta (Consolas viene con Windows).
+MONO = "Consolas"
 
 COMMON_PRODUCT_NAME = "Producto común"
 GRID_LIMIT = 12
@@ -182,10 +190,41 @@ def _outline(color=PRIMARY):
     return ft.OutlineInputBorder(side=ft.BorderSide(width=1, color=color))
 
 
+def _card(content, padding=16, **kwargs):
+    """Tarjeta de la maqueta: blanca, borde de 1px, radio 14, sombra suave."""
+    return ft.Container(
+        content=content,
+        bgcolor=WHITE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=14,
+        padding=padding,
+        shadow=ft.BoxShadow(blur_radius=10, spread_radius=0, color="#140f1e2d", offset=ft.Offset(0, 2)),
+        **kwargs,
+    )
+
+
+def _qty_style():
+    """Botones - / + chicos con borde, como la maqueta."""
+    return ft.ButtonStyle(
+        shape=ft.RoundedRectangleBorder(radius=8),
+        side=ft.BorderSide(width=1, color=BORDER),
+        bgcolor=SURFACE2,
+        padding=4,
+    )
+
+
+def _caps(text):
+    """Etiqueta chica en mayusculas atenuada ("TOTAL A COBRAR")."""
+    return ft.Text(text.upper(), size=11, weight=ft.FontWeight.W_800, color=MUTED)
+
+
 # ---------- UI ----------
 def main(page: ft.Page):
     page.title = "Mi POS - Flet"
     page.bgcolor = BG
+    page.padding = 0
+    # Semilla lila: radios, switches y focos toman el primario del tema.
+    page.theme = ft.Theme(color_scheme_seed=PRIMARY, font_family="Segoe UI")
     page.window.width = 1280
     page.window.height = 720
     page.window.min_width = 1000
@@ -199,16 +238,26 @@ def main(page: ft.Page):
 
     # ---------- Componentes ----------
     search_input = ft.TextField(
-        hint_text="Código o nombre (Enter)",
+        hint_text="Buscar producto o código (Enter)",
         autofocus=True,
         color=TEXT,
         hint_style=ft.TextStyle(color=MUTED),
-        bgcolor=WHITE,
-        border=_outline(),
+        bgcolor=SURFACE2,
+        filled=True,
+        prefix_icon=ft.Icons.SEARCH,
+        border={
+            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                side=ft.BorderSide(width=1, color=BORDER), border_radius=10
+            ),
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                side=ft.BorderSide(width=2, color=PRIMARY), border_radius=10
+            ),
+        },
+        expand=True,
     )
-    ticket_list = ft.ListView(expand=True, spacing=5)
+    ticket_list = ft.ListView(expand=True, spacing=6)
     grid = ft.GridView(
-        expand=True, max_extent=190, child_aspect_ratio=2.0, spacing=10, run_spacing=10
+        expand=True, max_extent=190, child_aspect_ratio=2.1, spacing=9, run_spacing=9
     )
     grid_info = ft.Text("", color=MUTED, size=12, visible=False)
     grid_empty = ft.Text(
@@ -216,27 +265,53 @@ def main(page: ft.Page):
         color=MUTED,
         visible=False,
     )
+    def _head(text, numeric=False):
+        return ft.DataColumn(
+            ft.Text(text.upper(), size=11, weight=ft.FontWeight.W_800, color=MUTED),
+            numeric=numeric,
+        )
+
     table = ft.DataTable(
-        column_spacing=24,
-        horizontal_margin=12,
+        column_spacing=18,
+        horizontal_margin=6,
+        heading_row_height=36,
+        data_row_min_height=48,
+        divider_thickness=1,
         columns=[
-            ft.DataColumn(ft.Text("Producto", color=TEXT, weight=ft.FontWeight.BOLD)),
-            ft.DataColumn(ft.Text("Cant", color=TEXT, weight=ft.FontWeight.BOLD)),
-            ft.DataColumn(ft.Text("Precio", color=TEXT, weight=ft.FontWeight.BOLD)),
-            ft.DataColumn(ft.Text("Total", color=TEXT, weight=ft.FontWeight.BOLD)),
-            ft.DataColumn(ft.Text("Acción", color=TEXT, weight=ft.FontWeight.BOLD)),
+            _head("Producto"),
+            _head("Cant"),
+            _head("Precio", numeric=True),
+            _head("Subtotal", numeric=True),
+            _head(""),
         ],
     )
-    ticket_empty = ft.Text(
-        "Ticket sin productos. Escanea o busca un producto, o tócalo en la grilla.",
-        color=MUTED,
+    ticket_empty = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Ticket vacío.", color=MUTED, size=14, weight=ft.FontWeight.W_600),
+                ft.Text(
+                    "Escanea o busca un producto, o tócalo en la grilla.",
+                    color=MUTED,
+                    size=13,
+                ),
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=2,
+        ),
+        alignment=ft.Alignment.CENTER,
+        padding=ft.Padding.symmetric(vertical=22),
         visible=False,
     )
     stock_text = ft.Text("", color=WARN_TEXT)
     stock_bar = ft.Container(
-        content=stock_text, bgcolor=WARN_BG, padding=8, border_radius=8, visible=False
+        content=stock_text, bgcolor=WARN_BG, padding=10, border_radius=10, visible=False
     )
-    total_lbl = ft.Text("$0", size=32, weight=ft.FontWeight.BOLD, color=TEXT)
+    total_lbl = ft.Text(
+        "$0", size=40, weight=ft.FontWeight.BOLD, color=TEXT, font_family=MONO
+    )
+    subtotal_lbl = ft.Text("$0", color=TEXT, font_family=MONO, weight=ft.FontWeight.W_600)
+    items_lbl = ft.Text("0", color=TEXT, font_family=MONO, weight=ft.FontWeight.W_600)
+    ticket_title = ft.Text("Ticket actual", size=15, weight=ft.FontWeight.BOLD, color=TEXT)
 
     # ---------- Dialogos (page.overlay) ----------
     def any_dialog_open():
@@ -321,17 +396,38 @@ def main(page: ft.Page):
         ticket_list.controls = []
         for t in ts.list_open_tickets():
             tid = t["id"]
-            label = f'{t["name"]} - {fmt_money(t["pending_total"])}'
             is_current = tid == current_ticket_id
             ticket_list.controls.append(
-                ft.FilledButton(
-                    label,
-                    on_click=make_load_handler(tid),
-                    style=ft.ButtonStyle(
-                        shape=ft.RoundedRectangleBorder(radius=12),
-                        bgcolor=PRIMARY if is_current else WHITE,
-                        color=WHITE if is_current else TEXT,
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Icon(
+                                ft.Icons.RECEIPT_LONG,
+                                size=18,
+                                color=PRIMARY if is_current else MUTED,
+                            ),
+                            ft.Text(
+                                t["name"] or "",
+                                color=TEXT,
+                                weight=ft.FontWeight.BOLD if is_current else ft.FontWeight.W_600,
+                                expand=True,
+                                no_wrap=True,
+                            ),
+                            ft.Text(
+                                fmt_money(t["pending_total"]),
+                                color=TEXT if is_current else MUTED,
+                                font_family=MONO,
+                                size=13,
+                            ),
+                        ],
+                        spacing=8,
                     ),
+                    bgcolor=SURFACE2 if is_current else WHITE,
+                    border=ft.Border.all(1.5 if is_current else 1, PRIMARY if is_current else BORDER),
+                    border_radius=10,
+                    padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+                    on_click=make_load_handler(tid),
+                    ink=True,
                 )
             )
 
@@ -403,41 +499,70 @@ def main(page: ft.Page):
             rows.append(
                 ft.DataRow(
                     cells=[
-                        ft.DataCell(ft.Text(item["product_name"], color=TEXT)),
-                        ft.DataCell(ft.Text(str(item["qty"]), color=TEXT)),
-                        ft.DataCell(ft.Text(fmt_money(item["unit_price"]), color=TEXT)),
-                        ft.DataCell(ft.Text(fmt_money(item["line_total"]), color=TEXT)),
+                        ft.DataCell(
+                            ft.Text(item["product_name"], color=TEXT, weight=ft.FontWeight.W_600)
+                        ),
                         ft.DataCell(
                             ft.Row(
                                 [
                                     ft.IconButton(
                                         ft.Icons.REMOVE,
                                         icon_color=ICON,
+                                        icon_size=16,
                                         tooltip="Quitar uno",
+                                        style=_qty_style(),
                                         on_click=make_qty_handler(item_id, -1),
+                                    ),
+                                    ft.Container(
+                                        ft.Text(
+                                            str(item["qty"]),
+                                            color=TEXT,
+                                            font_family=MONO,
+                                            weight=ft.FontWeight.BOLD,
+                                        ),
+                                        width=28,
+                                        alignment=ft.Alignment.CENTER,
                                     ),
                                     ft.IconButton(
                                         ft.Icons.ADD,
                                         icon_color=ICON,
+                                        icon_size=16,
                                         tooltip="Agregar uno",
+                                        style=_qty_style(),
                                         on_click=make_qty_handler(item_id, 1),
                                     ),
-                                    ft.IconButton(
-                                        ft.Icons.CLOSE,
-                                        icon_color=ERROR,
-                                        tooltip="Quitar línea",
-                                        on_click=lambda e, item_id=item_id: ask_delete_item(item_id),
-                                    ),
                                 ],
-                                spacing=0,
+                                spacing=2,
+                            )
+                        ),
+                        ft.DataCell(
+                            ft.Text(fmt_money(item["unit_price"]), color=TEXT, font_family=MONO)
+                        ),
+                        ft.DataCell(
+                            ft.Text(fmt_money(item["line_total"]), color=TEXT, font_family=MONO)
+                        ),
+                        ft.DataCell(
+                            ft.IconButton(
+                                ft.Icons.DELETE_OUTLINE,
+                                icon_color=ERROR,
+                                icon_size=19,
+                                tooltip="Quitar línea",
+                                on_click=lambda e, item_id=item_id: ask_delete_item(item_id),
                             )
                         ),
                     ]
                 )
             )
         table.rows = rows
+        table.visible = bool(items)
         ticket_empty.visible = not items
-        total_lbl.value = fmt_money(items_total(items))
+        total = items_total(items)
+        total_lbl.value = fmt_money(total)
+        subtotal_lbl.value = fmt_money(total)
+        items_lbl.value = str(sum(int(i["qty"]) for i in items))
+        current = ts.get_ticket(current_ticket_id)
+        ticket_title.value = f'Ticket actual · {(current or {}).get("name") or ""}'.rstrip(" ·")
+        cobrar_btn.disabled = not items
         refresh_ticket_list()
         page.update()
 
@@ -483,25 +608,48 @@ def main(page: ft.Page):
         # "Producto comun" es un producto especial de precio 0, no va en la grilla.
         products = [p for p in ps.list_products("") if not is_common_product(p)]
         shown = products[:GRID_LIMIT]
-        grid.controls = [
-            ft.FilledButton(
-                content=ft.Column(
-                    [
-                        ft.Text(p["name"], color=TEXT, weight=ft.FontWeight.BOLD, size=13),
-                        ft.Text(fmt_money(p["sale_price"]), color=PRIMARY, weight=ft.FontWeight.BOLD, size=13),
-                    ],
-                    spacing=2,
-                    alignment=ft.MainAxisAlignment.CENTER,
+        def card(p):
+            stock = int(p.get("stock") or 0)
+            low = stock <= int(p.get("min_stock") or 0)
+            code = (p.get("barcode") or "").strip()
+            sub = (f"Cód. {code} · " if code else "") + f"Stock {stock}"
+            price_row = [
+                ft.Text(
+                    fmt_money(p["sale_price"]), color=PRIMARY, weight=ft.FontWeight.BOLD,
+                    size=13.5, font_family=MONO,
+                )
+            ]
+            if low:
+                # Amarillo solo avisa; texto oscuro fijo para que se lea.
+                price_row.append(
+                    ft.Container(
+                        ft.Text("Stock bajo", size=10.5, weight=ft.FontWeight.W_800, color=TEXT),
+                        bgcolor=WARN_BADGE,
+                        border_radius=5,
+                        padding=ft.Padding.symmetric(horizontal=6, vertical=1),
+                    )
+                )
+            parts = [
+                ft.Text(
+                    p["name"], color=TEXT, weight=ft.FontWeight.BOLD, size=13,
+                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS,
                 ),
+                ft.Text(sub, color=MUTED, size=11.5, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                ft.Container(expand=True),
+                ft.Row(price_row, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            ]
+            return ft.Container(
+                content=ft.Column(parts, spacing=2),
+                bgcolor=WHITE,
+                border=ft.Border.all(1, BORDER),
+                border_radius=12,
+                padding=10,
                 on_click=make_grid_handler(p),
-                style=ft.ButtonStyle(
-                    shape=ft.RoundedRectangleBorder(radius=12),
-                    bgcolor=WHITE,
-                    color=TEXT,
-                ),
+                ink=True,
+                tooltip=f'Agregar {p["name"]}',
             )
-            for p in shown
-        ]
+
+        grid.controls = [card(p) for p in shown]
         grid_empty.visible = not products
         grid_info.visible = len(products) > GRID_LIMIT
         grid_info.value = f"Mostrando {GRID_LIMIT} de {len(products)} productos. Busca por nombre o código para ver el resto."
@@ -620,7 +768,10 @@ def main(page: ft.Page):
             confirmar_btn = ft.FilledButton("Confirmar", style=_state_style(PRIMARY, WHITE))
 
             content = [
-                ft.Text(f"Total: {fmt_money(total)}", color=TEXT, size=22, weight=ft.FontWeight.BOLD),
+                _caps("Total"),
+                ft.Text(
+                    fmt_money(total), color=TEXT, size=30, weight=ft.FontWeight.BOLD, font_family=MONO
+                ),
             ]
             if warnings:
                 detail = ", ".join(
@@ -704,91 +855,192 @@ def main(page: ft.Page):
         except Exception as exc:
             show_message(f"Error al cobrar: {exc}")
 
-    # ---------- Layout ----------
-    # La barra lateral tiene navegacion POS/Productos; los tickets solo se
-    # muestran en el POS.
-    tickets_box = ft.Column(
-        [
-            ft.Text("Tickets", color=TEXT, weight=ft.FontWeight.BOLD),
-            ticket_list,
-            ft.FilledButton("Nuevo ticket", on_click=new_ticket, style=_state_style(PRIMARY, WHITE)),
-            ft.TextButton(
-                "Limpiar ticket",
-                on_click=lambda e: ask_clear_ticket(),
-                style=ft.ButtonStyle(color=PRIMARY),
-            ),
-            ft.TextButton(
-                "Eliminar ticket",
-                on_click=lambda e: ask_delete_ticket(),
-                style=ft.ButtonStyle(color=ERROR),
-            ),
-        ],
-        expand=True,
-    )
-    nav_pos_btn = ft.FilledButton("POS", style=_state_style(PRIMARY, WHITE))
-    nav_prod_btn = ft.FilledButton("Productos", style=_state_style(WHITE, TEXT))
+    # ---------- Layout (maqueta moderna) ----------
+    # Pestanas arriba (POS / Productos), tickets abiertos en la columna
+    # izquierda y el total en su propia tarjeta a la derecha.
 
-    cobrar_btn = ft.FilledButton(
-        "COBRAR",
-        on_click=open_charge_dialog,
-        style=_state_style(PRIMARY, WHITE),
-        height=60,
-    )
-
-    main_col = ft.Column(
-        [
-            search_input,
-            grid_info,
-            grid_empty,
-            ft.Container(content=grid, height=170),
-            stock_bar,
-            ft.Column(
-                [
-                    # Scroll horizontal: la columna Accion nunca queda cortada.
-                    ft.Row([table], scroll=ft.ScrollMode.AUTO),
-                    ticket_empty,
-                ],
-                scroll=ft.ScrollMode.AUTO,
-                expand=True,
-            ),
-        ],
-        expand=True,
-        spacing=10,
-    )
-
-    right_card = ft.Container(
-        width=250,
+    # Columna izquierda: tickets abiertos (solo se ve en el POS).
+    tickets_box = ft.Container(
+        width=220,
         bgcolor=WHITE,
-        padding=16,
+        border=ft.Border.only(right=ft.BorderSide(width=1, color=BORDER)),
+        padding=ft.Padding.only(left=12, right=12, top=16, bottom=12),
         content=ft.Column(
             [
-                ft.Text("Total", color=TEXT, weight=ft.FontWeight.BOLD),
-                total_lbl,
-                cobrar_btn,
-                ft.Text("El medio de pago se elige al cobrar.", color=MUTED, size=12),
+                _caps("Tickets abiertos"),
+                ticket_list,
+                ft.FilledButton(
+                    content=ft.Row(
+                        [ft.Icon(ft.Icons.ADD, size=18), ft.Text("Nuevo ticket", weight=ft.FontWeight.BOLD)],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=6,
+                    ),
+                    on_click=new_ticket,
+                    style=_state_style(PRIMARY, WHITE, radius=10),
+                    height=44,
+                ),
+                ft.TextButton(
+                    "Eliminar ticket",
+                    icon=ft.Icons.DELETE_OUTLINE,
+                    on_click=lambda e: ask_delete_ticket(),
+                    style=ft.ButtonStyle(color=ERROR, shape=ft.RoundedRectangleBorder(radius=10)),
+                ),
             ],
-            spacing=12,
+            expand=True,
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         ),
+    )
+
+    # Tarjeta de busqueda + grilla de productos.
+    search_card = _card(
+        ft.Column(
+            [
+                ft.Row([search_input]),
+                grid_info,
+                grid_empty,
+                ft.Container(content=grid, height=170),
+            ],
+            spacing=10,
+        )
+    )
+
+    # Tarjeta del ticket actual.
+    ticket_card = _card(
+        ft.Column(
+            [
+                ft.Row(
+                    [
+                        ticket_title,
+                        ft.TextButton(
+                            "Limpiar ticket",
+                            on_click=lambda e: ask_clear_ticket(),
+                            style=ft.ButtonStyle(
+                                color=ERROR,
+                                shape=ft.RoundedRectangleBorder(radius=10),
+                                side=ft.BorderSide(width=1, color=BORDER),
+                            ),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                stock_bar,
+                ft.Column(
+                    [
+                        # Scroll horizontal: las acciones nunca quedan cortadas.
+                        ft.Row([table], scroll=ft.ScrollMode.AUTO),
+                        ticket_empty,
+                    ],
+                    scroll=ft.ScrollMode.AUTO,
+                    expand=True,
+                ),
+            ],
+            spacing=8,
+            expand=True,
+        ),
+        expand=True,
+    )
+
+    main_col = ft.Column([search_card, ticket_card], expand=True, spacing=14)
+
+    # Tarjeta del total: lo unico que "grita" junto al boton Cobrar.
+    cobrar_btn = ft.FilledButton(
+        content=ft.Text("Cobrar", size=17, weight=ft.FontWeight.W_800),
+        on_click=open_charge_dialog,
+        style=_state_style(PRIMARY, WHITE, radius=12),
+        height=56,
+    )
+
+    def _sum_row(label, value):
+        return ft.Row(
+            [ft.Text(label, color=MUTED, size=13.5), value],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        )
+
+    summary_card = _card(
+        ft.Column(
+            [
+                _caps("Total a cobrar"),
+                total_lbl,
+                _sum_row("Subtotal", subtotal_lbl),
+                _sum_row("Ítems", items_lbl),
+                ft.Container(height=8),
+                cobrar_btn,
+                ft.Text(
+                    "El medio de pago se elige al cobrar: efectivo, tarjeta o transferencia.",
+                    color=MUTED,
+                    size=12,
+                ),
+            ],
+            spacing=6,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
+        width=270,
+    )
+    right_col = ft.Column([summary_card], width=270)
+
+    # Vista Productos dentro de una tarjeta con titulo, como la maqueta.
+    productos_card = _card(
+        ft.Column(
+            [
+                ft.Text("Productos", size=22, weight=ft.FontWeight.BOLD, color=TEXT),
+                ft.Text(
+                    "Crea, edita y desactiva productos. El stock bajo se marca en rojo.",
+                    color=MUTED,
+                    size=13.5,
+                ),
+                productos_view,
+            ],
+            spacing=6,
+            expand=True,
+        ),
+        expand=True,
     )
 
     # El area central cambia entre el POS y la vista Productos sin
     # reconstruir nada: el ticket actual y la busqueda se conservan.
-    content_area = ft.Row([main_col, right_card], expand=True, spacing=10)
+    content_area = ft.Row(
+        [main_col, right_col],
+        expand=True,
+        spacing=14,
+        vertical_alignment=ft.CrossAxisAlignment.START,
+    )
+
+    # Pestanas arriba: la activa en primario, la otra texto atenuado sin
+    # fondo (un FilledButton transparente se veia gris, como deshabilitado).
+    nav_pos_btn = ft.Container(border_radius=10, ink=True)
+    nav_prod_btn = ft.Container(border_radius=10, ink=True)
+    tabs = (
+        (nav_pos_btn, "pos", "POS", ft.Icons.POINT_OF_SALE),
+        (nav_prod_btn, "productos", "Productos", ft.Icons.INVENTORY_2),
+    )
+
+    def paint_tabs(active):
+        for btn, name, label, icon in tabs:
+            on = name == active
+            fg = WHITE if on else MUTED
+            btn.content = ft.Row(
+                [
+                    ft.Icon(icon, size=19, color=fg),
+                    ft.Text(label, color=fg, weight=ft.FontWeight.BOLD, size=14),
+                ],
+                spacing=8,
+                tight=True,
+            )
+            btn.bgcolor = PRIMARY if on else None
+            btn.padding = ft.Padding.symmetric(horizontal=16, vertical=10)
 
     async def show_view(name):
+        paint_tabs(name)
         if name == "productos":
-            content_area.controls = [productos_view]
+            content_area.controls = [productos_card]
             tickets_box.visible = False
-            nav_pos_btn.style = _state_style(WHITE, TEXT)
-            nav_prod_btn.style = _state_style(PRIMARY, WHITE)
             productos_view.load_data()
             page.update()
             await productos_view.focus_search()
         else:
-            content_area.controls = [main_col, right_card]
+            content_area.controls = [main_col, right_col]
             tickets_box.visible = True
-            nav_pos_btn.style = _state_style(PRIMARY, WHITE)
-            nav_prod_btn.style = _state_style(WHITE, TEXT)
             refresh_grid()
             refresh_ui()
             await focus_search()
@@ -802,22 +1054,54 @@ def main(page: ft.Page):
 
     nav_pos_btn.on_click = show_pos
     nav_prod_btn.on_click = show_productos
+    paint_tabs("pos")
 
-    sidebar = ft.Container(
-        width=200,
+    initial = (business_name[:1] or "M").upper()
+    brand = ft.Row(
+        [
+            ft.Container(
+                ft.Text(initial, color=WHITE, weight=ft.FontWeight.W_800, size=15),
+                width=36,
+                height=36,
+                bgcolor=PRIMARY,
+                border_radius=9,
+                alignment=ft.Alignment.CENTER,
+            ),
+            ft.Column(
+                [
+                    ft.Text(business_name, size=16, weight=ft.FontWeight.BOLD, color=TEXT),
+                    ft.Text("Punto de venta", size=11.5, color=MUTED),
+                ],
+                spacing=0,
+            ),
+        ],
+        spacing=10,
+    )
+    top_bar = ft.Container(
         bgcolor=WHITE,
-        padding=10,
-        content=ft.Column(
-            [
-                ft.Text(business_name, size=20, weight=ft.FontWeight.BOLD, color=TEXT),
-                ft.Row([nav_pos_btn, nav_prod_btn], spacing=6),
-                tickets_box,
-            ],
-            expand=True,
+        border=ft.Border.only(bottom=ft.BorderSide(width=1, color=BORDER)),
+        padding=ft.Padding.symmetric(horizontal=16, vertical=10),
+        content=ft.Row(
+            [brand, ft.Container(width=24), nav_pos_btn, nav_prod_btn],
+            spacing=6,
         ),
     )
 
-    page.add(ft.Row([sidebar, content_area], expand=True, spacing=10))
+    page.add(
+        ft.Column(
+            [
+                top_bar,
+                ft.Row(
+                    [tickets_box, ft.Container(content_area, padding=16, expand=True)],
+                    expand=True,
+                    spacing=0,
+                    vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+                ),
+            ],
+            expand=True,
+            spacing=0,
+        )
+    )
 
     ensure_ticket()
     refresh_grid()

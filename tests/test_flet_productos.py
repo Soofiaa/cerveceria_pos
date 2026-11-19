@@ -169,22 +169,26 @@ def test_dialog_duplicate_barcode_keeps_dialog_open(temp_db):
 def test_nav_switches_views(temp_db):
     page = FakePage()
     pos_main.main(page)
-    outer = page.controls[0]
-    sidebar = outer.controls[0]
-    content_area = outer.controls[1]
-    # Al inicio: el POS (buscador + Total).
+    # Layout: barra superior con pestanas; debajo, tickets a la izquierda y
+    # el area central (POS o Productos).
+    root = page.controls[0]
+    top_bar, body = root.controls
+    tickets_box = body.controls[0]
+    content_area = body.controls[1].content
+    _brand, _gap, pos_btn, prod_btn = top_bar.content.controls
+    # Al inicio: el POS (columna principal + tarjeta del total).
     assert len(content_area.controls) == 2
-    nav_row = sidebar.content.controls[1]
-    pos_btn, prod_btn = nav_row.controls
+    assert tickets_box.visible is not False
     # Ir a Productos: el area central es la vista y los tickets se ocultan.
     asyncio.run(prod_btn.on_click(None))
     assert len(content_area.controls) == 1
-    assert isinstance(content_area.controls[0], ProductosView)
-    assert sidebar.content.controls[2].visible is False
-    # Volver al POS: vuelven buscador y Total, y los tickets se ven.
+    productos_card = content_area.controls[0]
+    assert any(isinstance(c, ProductosView) for c in productos_card.content.controls)
+    assert tickets_box.visible is False
+    # Volver al POS: vuelven la columna principal y el total, y los tickets.
     asyncio.run(pos_btn.on_click(None))
     assert len(content_area.controls) == 2
-    assert sidebar.content.controls[2].visible is True
+    assert tickets_box.visible is True
 
 
 def test_view_does_not_add_picker_at_startup(temp_db):
