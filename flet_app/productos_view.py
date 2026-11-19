@@ -24,6 +24,7 @@ from core import product_service as ps
 
 TEXT = "#1c2833"
 PRIMARY = "#6c3483"
+PRIMARY_TEXT = "#ffffff"
 WHITE = "#ffffff"
 MUTED = "#5d6d7e"
 ERROR = "#a93226"
@@ -139,7 +140,7 @@ class ProductosView(ft.Column):
                     ft.FilledButton(
                         "Buscar",
                         on_click=lambda e: self.load_data(),
-                        style=_state_style(PRIMARY, WHITE),
+                        style=_state_style(PRIMARY, PRIMARY_TEXT),
                         height=44,
                     ),
                     ft.Row(
@@ -153,7 +154,7 @@ class ProductosView(ft.Column):
                     ft.FilledButton(
                         "Agregar producto",
                         on_click=self._on_add,
-                        style=_state_style(PRIMARY, WHITE),
+                        style=_state_style(PRIMARY, PRIMARY_TEXT),
                     ),
                     ft.TextButton(
                         "Guardar lista...",
@@ -423,7 +424,7 @@ class ProductosView(ft.Column):
 
         dlg.actions = [
             ft.FilledButton(
-                "Guardar", on_click=save, style=_state_style(PRIMARY, WHITE)
+                "Guardar", on_click=save, style=_state_style(PRIMARY, PRIMARY_TEXT)
             ),
             ft.TextButton(
                 "Cancelar",

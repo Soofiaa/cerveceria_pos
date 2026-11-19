@@ -42,27 +42,70 @@ from core import product_service as ps  # noqa: E402
 from core import sales_service as ss  # noqa: E402
 from core import ticket_service as ts  # noqa: E402
 from flet_app import boletas as bol  # noqa: E402
+from flet_app import productos_view as productos_view_module  # noqa: E402
 from flet_app.productos_view import ProductosView  # noqa: E402
+from flet_app.reportes_view import ReportesView  # noqa: E402
+from flet_app.config_view import ConfigView  # noqa: E402
+from flet_app.theme import THEMES, get_theme  # noqa: E402
 
-# Paleta "lila" de la maqueta moderna (Mi Pos Maqueta Interfaz Moderna).
-# TEXT y MUTED se mantienen mas oscuros que en la maqueta para que el
-# texto secundario cumpla contraste >= 4.5:1 sobre blanco.
-TEXT = "#1c2833"
-PRIMARY = "#6c3483"
-BG = "#f6eff7"
-WHITE = "#ffffff"
-SURFACE2 = "#efe3f1"
-BORDER = "#e2d0e6"
-MUTED = "#5d6d7e"
-ICON = "#34495e"
-ERROR = "#a93226"
-WARN_BG = "#fff4d6"
-WARN_TEXT = "#6e4500"
-WARN_BADGE = "#f1c40f"
-DISABLED_BG = "#d6d1db"
-DISABLED_TEXT = "#5f5966"
+# Paleta activa. Arranca con el tema de config.json (por defecto lila) y
+# se reasigna en apply_palette() cuando el usuario cambia de tema. Todas
+# las vistas leen estas constantes al construir sus controles.
+TEXT = PRIMARY = PRIMARY_TEXT = WHITE = MUTED = BORDER = SURFACE2 = ERROR = ICON = None
+WARN_BG = WARN_TEXT = WARN_BADGE = DISABLED_BG = DISABLED_TEXT = BG = None
 # Montos en monoespaciada, como la maqueta (Consolas viene con Windows).
 MONO = "Consolas"
+
+
+def apply_palette(theme_name):
+    """Carga el tema por nombre en las constantes de color de este modulo.
+
+    Lila conserva los valores de la maqueta aprobada (PRIMARY #6c3483 etc.).
+    """
+    global TEXT, PRIMARY, PRIMARY_TEXT, BG, WHITE, SURFACE2, BORDER, MUTED, ICON, ERROR
+    global WARN_BG, WARN_TEXT, WARN_BADGE, DISABLED_BG, DISABLED_TEXT
+    t = get_theme(theme_name)
+    TEXT = t["text"]
+    PRIMARY = t["primary"]
+    PRIMARY_TEXT = t["primary_text"]
+    BG = t["background"]
+    WHITE = t["surface"]
+    SURFACE2 = t["surface2"]
+    BORDER = t["border"]
+    MUTED = t["secondary"]
+    ICON = t["icon"]
+    ERROR = t["danger"]
+    WARN_BG = t["warn_bg"]
+    WARN_TEXT = t["warn_text"]
+    WARN_BADGE = t["warn_badge"]
+    DISABLED_BG = t["disabled_bg"]
+    DISABLED_TEXT = t["disabled_text"]
+    # ProductosView lee sus colores de constantes de su modulo.
+    for k, v in (("TEXT", TEXT), ("PRIMARY", PRIMARY), ("PRIMARY_TEXT", PRIMARY_TEXT),
+                 ("WHITE", WHITE), ("MUTED", MUTED), ("ERROR", ERROR), ("WARN_BG", WARN_BG),
+                 ("WARN_TEXT", WARN_TEXT), ("SURFACE2", SURFACE2), ("BORDER", BORDER)):
+        setattr(productos_view_module, k, v)
+    return t
+
+
+def _saved_theme():
+    """Tema guardado en config.json, o lila si el archivo no lo trae.
+
+    core.config.load_config() rellena con DEFAULT_CONFIG (theme "neutro"),
+    asi que aqui se lee el archivo crudo: la app Flet arranca en lila.
+    """
+    import json
+
+    try:
+        with open(core_config.CONFIG_PATH, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, ValueError):
+        return "lila"
+    name = raw.get("theme") if isinstance(raw, dict) else None
+    return name if name in THEMES else "lila"
+
+
+apply_palette("lila")
 
 COMMON_PRODUCT_NAME = "Producto común"
 GRID_LIMIT = 12
@@ -93,24 +136,33 @@ def parse_price(txt):
     return int(digits) if digits else 0
 
 
-def get_next_ticket_number():
-    """Numero libre mas bajo entre los tickets abiertos (1, 2, 3...).
+def get_next_ticket_number(prefix="Ticket"):
+    """Numero libre mas bajo entre los tickets abiertos con ese prefijo.
 
     Si existen "Ticket 1" y "Ticket 3", devuelve 2. Si no hay tickets,
-    devuelve 1.
+    devuelve 1. Solo cuentan los nombres "<prefijo> N".
     """
     taken = set()
+    head = f"{prefix} "
     for t in ts.list_open_tickets():
         name = (t.get("name") or "").strip()
-        if name.startswith("Ticket "):
+        if name.startswith(head):
             try:
-                taken.add(int(name.replace("Ticket ", "", 1)))
+                taken.add(int(name.replace(head, "", 1)))
             except ValueError:
                 continue
     n = 1
     while n in taken:
         n += 1
     return n
+
+
+def new_ticket_name():
+    """Nombre del ticket nuevo: "Ticket N" o "Mesa N" segun config.json."""
+    prefix = core_config.load_config().get("ticket_prefix")
+    if prefix not in ("Ticket", "Mesa"):
+        prefix = "Ticket"
+    return f"{prefix} {get_next_ticket_number(prefix)}"
 
 
 def is_common_product(product):
@@ -239,27 +291,36 @@ def _caps(text):
 
 
 # ---------- UI ----------
-def main(page: ft.Page):
+def main(page: ft.Page, restore=None):
+    """Arma la app. `restore` trae el estado al reconstruir por cambio de tema."""
+    restore = restore or {}
+    # Antes de load_config(): esa funcion crea config.json con "neutro" si
+    # no existe, y el tema debe leerse del archivo tal como estaba.
+    theme_name = restore.get("theme") or _saved_theme()
+    cfg = core_config.load_config()
+    business_name = (cfg.get("business_name") or "Mi POS").strip() or "Mi POS"
+    current_theme = {"name": theme_name}
+    apply_palette(current_theme["name"])
+    page.theme_mode = ft.ThemeMode.DARK if get_theme(theme_name).get("dark") else ft.ThemeMode.LIGHT
     page.title = "Mi POS - Flet"
     page.bgcolor = BG
     page.padding = 0
     # Semilla lila: radios, switches y focos toman el primario del tema.
     page.theme = ft.Theme(color_scheme_seed=PRIMARY, font_family="Segoe UI")
-    # Siempre claro: con Windows en modo oscuro los controles sin color
-    # propio (desplegables, menus) salian con texto casi blanco.
-    page.theme_mode = ft.ThemeMode.LIGHT
+    # El modo (claro/oscuro) sigue al tema, no a Windows: con un tema claro
+    # y Windows oscuro, los controles sin color propio salian con texto casi
+    # blanco. Los temas oscuros piden modo oscuro por la misma razon.
     page.window.width = 1280
     page.window.height = 720
     page.window.min_width = 1000
     page.window.min_height = 650
     db_manager.bootstrap()
 
-    cfg = core_config.load_config()
-    business_name = (cfg.get("business_name") or "Mi POS").strip() or "Mi POS"
+    current_view = {"name": "pos"}
 
-    current_ticket_id = None
+    current_ticket_id = restore.get("ticket_id")
     # Ultima venta cobrada en esta sesion (para reimprimir o reenviar).
-    last_sale = {}
+    last_sale = dict(restore.get("last_sale") or {})
 
     # ---------- Componentes ----------
     search_input = ft.TextField(
@@ -472,12 +533,12 @@ def main(page: ft.Page):
         if open_tickets:
             current_ticket_id = open_tickets[0]["id"]
             return current_ticket_id
-        current_ticket_id = ts.create_ticket(f"Ticket {get_next_ticket_number()}")
+        current_ticket_id = ts.create_ticket(new_ticket_name())
         return current_ticket_id
 
     async def new_ticket(e):
         nonlocal current_ticket_id
-        current_ticket_id = ts.create_ticket(f"Ticket {get_next_ticket_number()}")
+        current_ticket_id = ts.create_ticket(new_ticket_name())
         stock_bar.visible = False
         refresh_ui()
         await focus_search()
@@ -492,7 +553,7 @@ def main(page: ft.Page):
             if remaining:
                 current_ticket_id = remaining[0]["id"]
             else:
-                current_ticket_id = ts.create_ticket(f"Ticket {get_next_ticket_number()}")
+                current_ticket_id = ts.create_ticket(new_ticket_name())
             stock_bar.visible = False
             refresh_ui()
 
@@ -769,7 +830,7 @@ def main(page: ft.Page):
         if empty is not None:
             current_ticket_id = empty
         else:
-            current_ticket_id = ts.create_ticket(f"Ticket {get_next_ticket_number()}")
+            current_ticket_id = ts.create_ticket(new_ticket_name())
         stock_bar.visible = False
         refresh_ui()
 
@@ -858,7 +919,7 @@ def main(page: ft.Page):
             close_dialog(dlg)
 
         send_btn = ft.FilledButton(
-            "Enviar", on_click=send_smtp, style=_state_style(PRIMARY, WHITE, radius=10),
+            "Enviar", on_click=send_smtp, style=_state_style(PRIMARY, PRIMARY_TEXT, radius=10),
             disabled=not smtp_ok,
         )
         to_input.on_submit = send_smtp if smtp_ok else open_mail_client
@@ -907,189 +968,9 @@ def main(page: ft.Page):
             )
         actions.append(
             ft.FilledButton("Aceptar", autofocus=True, on_click=lambda e: close_dialog(dlg),
-                            style=_state_style(PRIMARY, WHITE, radius=10))
+                            style=_state_style(PRIMARY, PRIMARY_TEXT, radius=10))
         )
         dlg.actions = actions
-        open_dialog(dlg)
-
-    def open_settings_dialog(e=None):
-        """Configuracion: impresora de boletas y correo (opcional)."""
-        _cfg, boleta_cfg, smtp_cfg = bol.load_settings()
-        printers = bol.list_windows_printers()
-        current_printer = boleta_cfg.get("printer") or bol.default_windows_printer()
-        mode = ft.Dropdown(
-            label="Cómo imprimir",
-            value=boleta_cfg.get("print_mode") or "windows",
-            options=[ft.DropdownOption(key=k, text=v) for k, v in bol.PRINT_MODES.items()],
-            width=380,
-        )
-        printer = ft.Dropdown(
-            label="Impresora de Windows",
-            value=current_printer if current_printer in printers else None,
-            options=[ft.DropdownOption(key=p, text=p) for p in printers],
-            width=380,
-        )
-        paper = ft.Dropdown(
-            label="Ancho de papel",
-            value=str(boleta_cfg.get("paper_mm") or 80),
-            options=[ft.DropdownOption(key="80", text="80 mm"), ft.DropdownOption(key="58", text="58 mm")],
-            width=180,
-        )
-        host = _field("IP de la térmica (red)", boleta_cfg.get("host"), width=240)
-        port = _field("Puerto", boleta_cfg.get("port") or 9100, width=120,
-                      keyboard_type=ft.KeyboardType.NUMBER)
-        net_row = ft.Row([host, port])
-        smtp_host = _field("Servidor SMTP", smtp_cfg.get("host"), width=260)
-        smtp_port = _field("Puerto", smtp_cfg.get("port"), width=100, keyboard_type=ft.KeyboardType.NUMBER)
-        smtp_sec = ft.Dropdown(
-            label="Seguridad",
-            value=smtp_cfg.get("security") or "starttls",
-            options=[ft.DropdownOption(key="starttls", text="STARTTLS (587)"),
-                     ft.DropdownOption(key="ssl", text="SSL (465)")],
-            width=380,
-        )
-        smtp_user = _field("Usuario (correo de envío)", smtp_cfg.get("user"), width=380)
-        smtp_pass = _field(
-            "Contraseña de aplicación",
-            "",
-            width=380,
-            password=True,
-            can_reveal_password=True,
-            hint_text="Guardada" if smtp_cfg.get("password_dpapi") else "",
-            hint_style=ft.TextStyle(color=MUTED),
-        )
-        msg = ft.Text("", color=ERROR)
-        email_on = ft.Checkbox(
-            label="Enviar comprobantes por correo (opcional)",
-            value=bol.email_enabled(smtp_cfg),
-            label_style=ft.TextStyle(color=TEXT),
-        )
-        email_box = ft.Column(
-            [
-                ft.Text(
-                    "Gmail: smtp.gmail.com, STARTTLS 587 y una contraseña de aplicación. "
-                    "La contraseña se guarda cifrada con la protección de Windows.",
-                    color=MUTED, size=12,
-                ),
-                ft.Row([smtp_host, smtp_port]),
-                smtp_sec, smtp_user, smtp_pass,
-            ],
-            tight=True,
-        )
-
-        def sync_visibility(e=None):
-            net_row.visible = mode.value == "escpos_red"
-            printer.visible = mode.value != "escpos_red"
-            email_box.visible = bool(email_on.value)
-            page.update()
-
-        mode.on_select = sync_visibility
-        email_on.on_change = sync_visibility
-
-        def collect():
-            try:
-                port_n = int(parse_price(port.value) or 9100)
-                smtp_port_n = int(parse_price(smtp_port.value) or 587)
-            except ValueError:
-                port_n, smtp_port_n = 9100, 587
-            new_boleta = {
-                "print_mode": mode.value or "windows",
-                "printer": printer.value or "",
-                "host": (host.value or "").strip(),
-                "port": port_n,
-                "paper_mm": int(paper.value or 80),
-            }
-            new_smtp = {
-                "enabled": bool(email_on.value),
-                "host": (smtp_host.value or "").strip(),
-                "port": smtp_port_n,
-                "security": smtp_sec.value or "starttls",
-                "user": (smtp_user.value or "").strip(),
-                "sender": (smtp_user.value or "").strip(),
-                "password_dpapi": smtp_cfg.get("password_dpapi") or "",
-            }
-            if smtp_pass.value:
-                new_smtp["password_dpapi"] = bol.protect_password(smtp_pass.value)
-            return new_boleta, new_smtp
-
-        def save(e):
-            new_boleta, new_smtp = collect()
-            bol.save_settings(boleta=new_boleta, smtp=new_smtp)
-            close_dialog(dlg)
-            show_message("Configuración guardada.")
-
-        async def test_print(e):
-            new_boleta, _ = collect()
-            data = {
-                "business_name": (core_config.load_config().get("business_name") or "Mi POS"),
-                "rut": "", "address": "", "phone": "",
-                "sale_id": "PRUEBA", "created_at": "",
-                "items": [{"name": "Prueba de impresión", "qty": 1, "unit_price": 0, "line_total": 0}],
-                "total": 0, "pay_method": "efectivo", "pay_label": "Efectivo",
-                "received": None, "change": None,
-            }
-            msg.color = MUTED
-            msg.value = "Imprimiendo prueba…"
-            page.update()
-            try:
-                await asyncio.to_thread(bol.print_receipt, data, new_boleta)
-            except Exception as exc:
-                msg.color = ERROR
-                msg.value = f"No se pudo imprimir: {exc}"
-                page.update()
-                return
-            msg.color = PRIMARY
-            msg.value = "Prueba enviada a la impresora."
-            page.update()
-
-        no_printers = ft.Text(
-            "Windows no muestra ninguna impresora. Conecta la impresora de boletas, "
-            "instala el programa (driver) que trae y vuelve a abrir esta ventana.",
-            color=ERROR, size=12, visible=not printers,
-        )
-        dlg = ft.AlertDialog(
-            title=ft.Text("Configuración", color=TEXT),
-            bgcolor=WHITE,
-            content=ft.Column(
-                [
-                    _caps("Impresora de boletas"),
-                    ft.Text(
-                        "Es la impresora térmica de rollo (80 o 58 mm) de la caja. "
-                        "Conéctala, instala el driver que trae y elígela en la lista: "
-                        "suele llamarse POS-80, XP-80C, EPSON TM-T20 o similar. "
-                        "Si no sabes cuál es, deja «Impresora de Windows» y usa "
-                        "«Imprimir prueba».",
-                        color=MUTED, size=12,
-                    ),
-                    mode, printer, no_printers, net_row, paper,
-                    ft.Text(
-                        "Imprime un comprobante interno de venta: no es boleta electrónica del SII.",
-                        color=MUTED, size=12,
-                    ),
-                    ft.Divider(color=BORDER),
-                    _caps("Correo (opcional)"),
-                    email_on,
-                    email_box,
-                ],
-                tight=True,
-                width=400,
-                scroll=ft.ScrollMode.AUTO,
-                height=400,
-            ),
-        )
-        # El estado (prueba de impresion) queda siempre a la vista, fuera
-        # del area con scroll.
-        dlg.content = ft.Column([dlg.content, msg], tight=True, width=400)
-        dlg.actions = [
-            ft.TextButton("Imprimir prueba", icon=ft.Icons.PRINT, on_click=test_print,
-                          style=ft.ButtonStyle(color=PRIMARY)),
-            ft.FilledButton("Guardar", on_click=save, style=_state_style(PRIMARY, WHITE, radius=10)),
-            ft.TextButton("Cancelar", on_click=lambda e: close_dialog(dlg),
-                          style=ft.ButtonStyle(color=PRIMARY)),
-        ]
-        net_row.visible = mode.value == "escpos_red"
-        printer.visible = mode.value != "escpos_red"
-        email_box.visible = bool(email_on.value)
         open_dialog(dlg)
 
     def open_charge_dialog(e):
@@ -1124,7 +1005,7 @@ def main(page: ft.Page):
                 keyboard_type=ft.KeyboardType.NUMBER,
             )
             status_lbl = ft.Text("", size=18, weight=ft.FontWeight.BOLD, color=PRIMARY)
-            confirmar_btn = ft.FilledButton("Confirmar", style=_state_style(PRIMARY, WHITE))
+            confirmar_btn = ft.FilledButton("Confirmar", style=_state_style(PRIMARY, PRIMARY_TEXT))
 
             content = [
                 _caps("Total"),
@@ -1239,7 +1120,7 @@ def main(page: ft.Page):
                         spacing=6,
                     ),
                     on_click=new_ticket,
-                    style=_state_style(PRIMARY, WHITE, radius=10),
+                    style=_state_style(PRIMARY, PRIMARY_TEXT, radius=10),
                     height=44,
                 ),
                 ft.TextButton(
@@ -1310,7 +1191,7 @@ def main(page: ft.Page):
     cobrar_btn = ft.FilledButton(
         content=ft.Text("Cobrar", size=17, weight=ft.FontWeight.W_800),
         on_click=open_charge_dialog,
-        style=_state_style(PRIMARY, WHITE, radius=12),
+        style=_state_style(PRIMARY, PRIMARY_TEXT, radius=12),
         height=56,
     )
 
@@ -1385,15 +1266,19 @@ def main(page: ft.Page):
     # fondo (un FilledButton transparente se veia gris, como deshabilitado).
     nav_pos_btn = ft.Container(border_radius=10, ink=True)
     nav_prod_btn = ft.Container(border_radius=10, ink=True)
+    nav_rep_btn = ft.Container(border_radius=10, ink=True)
+    nav_cfg_btn = ft.Container(border_radius=10, ink=True)
     tabs = (
         (nav_pos_btn, "pos", "POS", ft.Icons.POINT_OF_SALE),
         (nav_prod_btn, "productos", "Productos", ft.Icons.INVENTORY_2),
+        (nav_rep_btn, "reportes", "Reportes", ft.Icons.BAR_CHART),
+        (nav_cfg_btn, "config", "Configuración", ft.Icons.SETTINGS_OUTLINED),
     )
 
     def paint_tabs(active):
         for btn, name, label, icon in tabs:
             on = name == active
-            fg = WHITE if on else MUTED
+            fg = PRIMARY_TEXT if on else MUTED
             btn.content = ft.Row(
                 [
                     ft.Icon(icon, size=19, color=fg),
@@ -1405,21 +1290,75 @@ def main(page: ft.Page):
             btn.bgcolor = PRIMARY if on else None
             btn.padding = ft.Padding.symmetric(horizontal=16, vertical=10)
 
-    async def show_view(name):
+    def _colors():
+        """Paleta activa como diccionario para las vistas nuevas."""
+        return get_theme(current_theme["name"])
+
+    def change_theme(name):
+        """Aplica el tema sin reiniciar: reconstruye la interfaz con la paleta
+        nueva y restaura el estado (ticket actual, busqueda, vista, rango de
+        fechas y lo escrito en Configuracion). No toca la base de datos.
+        """
+        state = {
+            "theme": name,
+            "ticket_id": current_ticket_id,
+            "last_sale": dict(last_sale),
+            "search": search_input.value or "",
+            "view": current_view["name"],
+            "desde": reportes_view.in_desde.value,
+            "hasta": reportes_view.in_hasta.value,
+            "cfg_fields": config_view.snapshot(),
+        }
+        # Los dialogos abiertos se pierden (pertenecen a la interfaz vieja).
+        page.overlay.clear()
+        page.controls.clear()
+        main(page, restore=state)
+
+    def on_config_saved(cfg):
+        """Tras Guardar en Configuracion: nombre del negocio en la barra."""
+        new_name = (cfg.get("business_name") or "Mi POS").strip() or "Mi POS"
+        brand_name.value = new_name
+        brand_initial.value = (new_name[:1] or "M").upper()
+        page.update()
+
+    # Vistas de la barra: se muestran dentro del area central (un Column).
+    reportes_view = ReportesView(page, _colors())
+    config_view = ConfigView(page, _colors(), on_theme_change=change_theme, on_saved=on_config_saved)
+    reportes_card = _card(
+        ft.Column([ft.Text("Reportes", size=22, weight=ft.FontWeight.BOLD, color=TEXT), reportes_view],
+                  spacing=6, expand=True),
+        expand=True,
+    )
+    config_card = _card(config_view, expand=True)
+
+    def apply_view(name):
+        """Muestra la vista `name` en el area central (sin foco)."""
+        current_view["name"] = name
         paint_tabs(name)
         if name == "productos":
             content_area.controls = [productos_card]
             tickets_box.visible = False
             productos_view.load_data()
-            page.update()
-            await productos_view.focus_search()
+        elif name == "reportes":
+            content_area.controls = [reportes_card]
+            tickets_box.visible = False
+            reportes_view.load_data()
+        elif name == "config":
+            content_area.controls = [config_card]
+            tickets_box.visible = False
         else:
             content_area.controls = [main_col, right_col]
             tickets_box.visible = True
             refresh_grid()
             refresh_ui()
-            await focus_search()
         page.update()
+
+    async def show_view(name):
+        apply_view(name)
+        if name == "productos":
+            await productos_view.focus_search()
+        elif name == "pos":
+            await focus_search()
 
     async def show_pos(e):
         await show_view("pos")
@@ -1427,15 +1366,26 @@ def main(page: ft.Page):
     async def show_productos(e):
         await show_view("productos")
 
+    async def show_reportes(e):
+        await show_view("reportes")
+
+    async def show_config(e):
+        await show_view("config")
+
     nav_pos_btn.on_click = show_pos
     nav_prod_btn.on_click = show_productos
+    nav_rep_btn.on_click = show_reportes
+    nav_cfg_btn.on_click = show_config
     paint_tabs("pos")
 
-    initial = (business_name[:1] or "M").upper()
+    brand_initial = ft.Text(
+        (business_name[:1] or "M").upper(), color=PRIMARY_TEXT, weight=ft.FontWeight.W_800, size=15
+    )
+    brand_name = ft.Text(business_name, size=16, weight=ft.FontWeight.BOLD, color=TEXT)
     brand = ft.Row(
         [
             ft.Container(
-                ft.Text(initial, color=WHITE, weight=ft.FontWeight.W_800, size=15),
+                brand_initial,
                 width=36,
                 height=36,
                 bgcolor=PRIMARY,
@@ -1443,10 +1393,7 @@ def main(page: ft.Page):
                 alignment=ft.Alignment.CENTER,
             ),
             ft.Column(
-                [
-                    ft.Text(business_name, size=16, weight=ft.FontWeight.BOLD, color=TEXT),
-                    ft.Text("Punto de venta", size=11.5, color=MUTED),
-                ],
+                [brand_name, ft.Text("Punto de venta", size=11.5, color=MUTED)],
                 spacing=0,
             ),
         ],
@@ -1462,13 +1409,9 @@ def main(page: ft.Page):
                 ft.Container(width=24),
                 nav_pos_btn,
                 nav_prod_btn,
+                nav_rep_btn,
+                nav_cfg_btn,
                 ft.Container(expand=True),
-                ft.TextButton(
-                    "Configuración",
-                    icon=ft.Icons.SETTINGS_OUTLINED,
-                    on_click=open_settings_dialog,
-                    style=ft.ButtonStyle(color=MUTED, shape=ft.RoundedRectangleBorder(radius=10)),
-                ),
             ],
             spacing=6,
         ),
@@ -1491,10 +1434,24 @@ def main(page: ft.Page):
     )
 
     ensure_ticket()
+    search_input.value = restore.get("search", "")
     refresh_grid()
     refresh_ui()
     productos_view.load_data()
+    if restore:
+        last_receipt_btn.visible = bool(last_sale)
+        if restore.get("desde") is not None:
+            reportes_view.in_desde.value = restore["desde"]
+            reportes_view.in_hasta.value = restore["hasta"]
+        config_view.restore(restore.get("cfg_fields"))
+        if restore.get("view") and restore["view"] != "pos":
+            apply_view(restore["view"])
+        page.update()
 
 
 if __name__ == "__main__":
-    ft.run(main)
+    # Escritorio por defecto. "--web" abre la app en el navegador (prueba en vivo).
+    if "--web" in sys.argv:
+        ft.run(main, view=ft.AppView.WEB_BROWSER, port=8551)
+    else:
+        ft.run(main)
