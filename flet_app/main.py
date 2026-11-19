@@ -20,6 +20,8 @@ Reglas que este archivo cumple:
   y se quitan de ahi en on_dismiss (Flutter lo avisa al terminar de
   cerrarse). focus() es asincrono: se usa con await en handlers async.
   border_color esta deprecado: se usa border=OutlineInputBorder(...).
+- Fase 2: la barra lateral cambia entre POS y Productos
+  (flet_app/productos_view.py); al volver al POS la grilla se actualiza.
 """
 
 import os
@@ -35,6 +37,7 @@ from core import db_manager  # noqa: E402
 from core import product_service as ps  # noqa: E402
 from core import sales_service as ss  # noqa: E402
 from core import ticket_service as ts  # noqa: E402
+from flet_app.productos_view import ProductosView  # noqa: E402
 
 TEXT = "#1c2833"
 PRIMARY = "#6c3483"
@@ -242,7 +245,12 @@ def main(page: ft.Page):
     async def focus_search():
         if any_dialog_open():
             return
-        await search_input.focus()
+        try:
+            await search_input.focus()
+        except Exception:
+            # El foco es best-effort: si el control no esta visible, no
+            # tiene que romper el flujo (tambien lo usan los tests).
+            pass
 
     def open_dialog(dlg):
         # on_dismiss llega cuando Flutter termina de cerrar el dialogo (por
@@ -513,6 +521,10 @@ def main(page: ft.Page):
             stock_bar.visible = False
         refresh_ui()
 
+    # ---------- Vista Productos (Fase 2) ----------
+    # Al crear/editar/quitar un producto, la grilla del POS se actualiza.
+    productos_view = ProductosView(page, on_products_changed=refresh_grid)
+
     # ---------- Busqueda ----------
     async def add_item_by_search(e):
         q = (search_input.value or "").strip()
@@ -693,30 +705,28 @@ def main(page: ft.Page):
             show_message(f"Error al cobrar: {exc}")
 
     # ---------- Layout ----------
-    sidebar = ft.Container(
-        width=200,
-        bgcolor=WHITE,
-        padding=10,
-        content=ft.Column(
-            [
-                ft.Text(business_name, size=20, weight=ft.FontWeight.BOLD, color=TEXT),
-                ft.Text("Tickets", color=TEXT, weight=ft.FontWeight.BOLD),
-                ticket_list,
-                ft.FilledButton("Nuevo ticket", on_click=new_ticket, style=_state_style(PRIMARY, WHITE)),
-                ft.TextButton(
-                    "Limpiar ticket",
-                    on_click=lambda e: ask_clear_ticket(),
-                    style=ft.ButtonStyle(color=PRIMARY),
-                ),
-                ft.TextButton(
-                    "Eliminar ticket",
-                    on_click=lambda e: ask_delete_ticket(),
-                    style=ft.ButtonStyle(color=ERROR),
-                ),
-            ],
-            expand=True,
-        ),
+    # La barra lateral tiene navegacion POS/Productos; los tickets solo se
+    # muestran en el POS.
+    tickets_box = ft.Column(
+        [
+            ft.Text("Tickets", color=TEXT, weight=ft.FontWeight.BOLD),
+            ticket_list,
+            ft.FilledButton("Nuevo ticket", on_click=new_ticket, style=_state_style(PRIMARY, WHITE)),
+            ft.TextButton(
+                "Limpiar ticket",
+                on_click=lambda e: ask_clear_ticket(),
+                style=ft.ButtonStyle(color=PRIMARY),
+            ),
+            ft.TextButton(
+                "Eliminar ticket",
+                on_click=lambda e: ask_delete_ticket(),
+                style=ft.ButtonStyle(color=ERROR),
+            ),
+        ],
+        expand=True,
     )
+    nav_pos_btn = ft.FilledButton("POS", style=_state_style(PRIMARY, WHITE))
+    nav_prod_btn = ft.FilledButton("Productos", style=_state_style(WHITE, TEXT))
 
     cobrar_btn = ft.FilledButton(
         "COBRAR",
@@ -761,11 +771,58 @@ def main(page: ft.Page):
         ),
     )
 
-    page.add(ft.Row([sidebar, main_col, right_card], expand=True, spacing=10))
+    # El area central cambia entre el POS y la vista Productos sin
+    # reconstruir nada: el ticket actual y la busqueda se conservan.
+    content_area = ft.Row([main_col, right_card], expand=True, spacing=10)
+
+    async def show_view(name):
+        if name == "productos":
+            content_area.controls = [productos_view]
+            tickets_box.visible = False
+            nav_pos_btn.style = _state_style(WHITE, TEXT)
+            nav_prod_btn.style = _state_style(PRIMARY, WHITE)
+            productos_view.load_data()
+            page.update()
+            await productos_view.focus_search()
+        else:
+            content_area.controls = [main_col, right_card]
+            tickets_box.visible = True
+            nav_pos_btn.style = _state_style(PRIMARY, WHITE)
+            nav_prod_btn.style = _state_style(WHITE, TEXT)
+            refresh_grid()
+            refresh_ui()
+            await focus_search()
+        page.update()
+
+    async def show_pos(e):
+        await show_view("pos")
+
+    async def show_productos(e):
+        await show_view("productos")
+
+    nav_pos_btn.on_click = show_pos
+    nav_prod_btn.on_click = show_productos
+
+    sidebar = ft.Container(
+        width=200,
+        bgcolor=WHITE,
+        padding=10,
+        content=ft.Column(
+            [
+                ft.Text(business_name, size=20, weight=ft.FontWeight.BOLD, color=TEXT),
+                ft.Row([nav_pos_btn, nav_prod_btn], spacing=6),
+                tickets_box,
+            ],
+            expand=True,
+        ),
+    )
+
+    page.add(ft.Row([sidebar, content_area], expand=True, spacing=10))
 
     ensure_ticket()
     refresh_grid()
     refresh_ui()
+    productos_view.load_data()
 
 
 if __name__ == "__main__":

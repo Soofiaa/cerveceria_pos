@@ -228,17 +228,20 @@ def delete_product(product_id: int):
 
 
 def desactivar_producto(product_id: int) -> None:
-    """
-    Baja lógica de un producto: marca is_active=0 en vez de borrarlo.
-    - El producto deja de aparecer en list_products() por defecto (búsqueda,
-      catálogo del POS), pero su fila sigue existiendo, así que se conserva
-      intacta la trazabilidad de sale_items y open_ticket_items que lo
-      referencian.
-    """
+    """Baja lógica de un producto: marca is_active=0 en vez de borrarlo."""
     with get_conn() as con:
         cur = con.cursor()
         cur.execute("UPDATE products SET is_active=0 WHERE id=?", (int(product_id),))
         if cur.rowcount == 0:
             raise ValueError("El producto no existe o ya fue eliminado.")
+        con.commit()
+
+def reactivar_producto(product_id: int) -> None:
+    """Reactivación de un producto: marca is_active=1."""
+    with get_conn() as con:
+        cur = con.cursor()
+        cur.execute("UPDATE products SET is_active=1 WHERE id=?", (int(product_id),))
+        if cur.rowcount == 0:
+            raise ValueError("El producto no existe.")
         con.commit()
 

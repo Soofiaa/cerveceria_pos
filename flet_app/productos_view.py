@@ -1,0 +1,507 @@
+"""Mi POS en Flet - Vista Productos (Fase 2).
+
+Lista, busqueda, crear/editar, quitar (borrar o desactivar) y reactivar
+productos, y exportacion CSV. Reutiliza core/product_service y
+core/product_backup_service sin modificarlos.
+
+Reglas:
+- Flet 1.1.2: no existen page.dialog ni page.snack_bar: los dialogos van
+  en page.overlay y se quitan en on_dismiss. focus() es asincrono.
+- ft.UserControl NO existe en Flet 1.1.2 (AttributeError al importar):
+  la vista es subclase de ft.Column y construye sus controles en __init__.
+- FilePicker es un Service: al construirlo se registra solo en la pagina.
+  NO va en page.overlay (ahi el cliente lo trata como control visual y
+  muestra "Unknown control: FilePicker"). save_file es async y devuelve
+  la ruta elegida (o None si se cancela).
+- "Producto comun" es especial: se muestra pero no se puede quitar ni
+  desactivar.
+"""
+
+import flet as ft
+
+from core import product_backup_service as pbs
+from core import product_service as ps
+
+TEXT = "#1c2833"
+PRIMARY = "#6c3483"
+WHITE = "#ffffff"
+MUTED = "#5d6d7e"
+ERROR = "#a93226"
+WARN_BG = "#fff4d6"
+WARN_TEXT = "#6e4500"
+
+COMMON_PRODUCT_NAME = "Producto común"
+
+
+def _parse_money(txt):
+    """'$10.500', '10.500', '10,500' -> 10500. Igual que Qt: solo digitos."""
+    digits = "".join(ch for ch in (txt or "") if ch.isdigit())
+    return int(digits) if digits else 0
+
+
+def _parse_money_or_none(txt):
+    """Entero del texto, o None si tiene letras (no es un monto valido)."""
+    raw = (txt or "").strip()
+    if not raw:
+        return None
+    cleaned = raw.replace("$", "").replace(".", "").replace(",", "").replace(" ", "")
+    if not cleaned.isdigit():
+        return None
+    return int(cleaned)
+
+
+def _fmt_money(value):
+    """Formato chileno: 1500 -> $1.500."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        n = 0
+    sign = "-" if n < 0 else ""
+    return sign + "$" + f"{abs(n):,}".replace(",", ".")
+
+
+def is_common_product(product):
+    return (product.get("name") or "").strip().lower() == COMMON_PRODUCT_NAME.lower()
+
+
+def _state_style(bg, fg, radius=12):
+    """Boton con radio 12, como en el POS."""
+    return ft.ButtonStyle(
+        shape=ft.RoundedRectangleBorder(radius=radius),
+        bgcolor=bg,
+        color=fg,
+    )
+
+
+class ProductosView(ft.Column):
+    """Vista Productos: tabla, busqueda, crear/editar, quitar, reactivar."""
+
+    def __init__(self, page, on_products_changed=None):
+        super().__init__(expand=True, spacing=10)
+        self._page = page
+        self.on_products_changed = on_products_changed
+
+        self.search = ft.TextField(
+            hint_text="Buscar por nombre o código",
+            color=TEXT,
+            hint_style=ft.TextStyle(color=MUTED),
+            bgcolor=WHITE,
+            on_submit=lambda e: self.load_data(),
+            expand=True,
+        )
+        self.chk_inactivos = ft.Switch(
+            label="Ver inactivos",
+            value=False,
+            on_change=lambda e: self.load_data(),
+        )
+        self.count_lbl = ft.Text("", color=MUTED, size=12)
+        self.empty_lbl = ft.Text(
+            "No hay productos. Agrega uno con el botón de abajo.",
+            color=MUTED,
+            visible=False,
+        )
+        self.table = ft.DataTable(
+            column_spacing=16,
+            horizontal_margin=8,
+            columns=[
+                ft.DataColumn(ft.Text("Nombre", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Código", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Venta", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Compra", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Stock", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Stock mín.", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Estado", color=TEXT, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Acciones", color=TEXT, weight=ft.FontWeight.BOLD)),
+            ],
+        )
+        # FilePicker es un Service: al construirlo se registra solo en la
+        # pagina. NO va en page.overlay: ahi el cliente lo trata como
+        # control visual y muestra "Unknown control: FilePicker".
+        self.picker = ft.FilePicker()
+
+        self.controls = [
+            ft.Row(
+                [
+                    self.search,
+                    ft.FilledButton(
+                        "Buscar",
+                        on_click=lambda e: self.load_data(),
+                        style=_state_style(PRIMARY, WHITE),
+                    ),
+                    self.chk_inactivos,
+                ]
+            ),
+            ft.Row(
+                [
+                    ft.FilledButton(
+                        "Agregar producto",
+                        on_click=self._on_add,
+                        style=_state_style(PRIMARY, WHITE),
+                    ),
+                    ft.TextButton(
+                        "Guardar lista...",
+                        on_click=self._export_csv,
+                        style=ft.ButtonStyle(color=PRIMARY),
+                    ),
+                ]
+            ),
+            self.count_lbl,
+            self.empty_lbl,
+            # Scroll horizontal: la columna Acciones nunca queda cortada.
+            ft.Row([self.table], scroll=ft.ScrollMode.AUTO, expand=True),
+        ]
+
+    async def focus_search(self):
+        try:
+            await self.search.focus()
+        except Exception:
+            pass
+
+    # ---------- Avisos y confirmaciones (page.overlay, como en main.py) ----------
+    def _display_dialog(self, dlg):
+        async def on_dismiss(e):
+            if dlg in self._page.overlay:
+                self._page.overlay.remove(dlg)
+            self._page.update()
+
+        dlg.on_dismiss = on_dismiss
+        self._page.overlay.append(dlg)
+        dlg.open = True
+        self._page.update()
+
+    def _close_dialog(self, dlg):
+        dlg.open = False
+        self._page.update()
+
+    def _show_message(self, text):
+        dlg = ft.AlertDialog(
+            title=ft.Text("Mi POS", color=TEXT),
+            content=ft.Text(text, color=TEXT),
+            bgcolor=WHITE,
+            actions=[
+                ft.TextButton(
+                    "Aceptar",
+                    autofocus=True,
+                    on_click=lambda e: self._close_dialog(dlg),
+                    style=ft.ButtonStyle(color=PRIMARY),
+                )
+            ],
+        )
+        self._display_dialog(dlg)
+
+    def _ask_confirm(self, title, text, on_yes):
+        dlg = ft.AlertDialog(
+            title=ft.Text(title, color=TEXT),
+            content=ft.Text(text, color=TEXT),
+            bgcolor=WHITE,
+        )
+
+        def yes(e):
+            self._close_dialog(dlg)
+            on_yes()
+
+        dlg.actions = [
+            ft.TextButton("Sí", on_click=yes, style=ft.ButtonStyle(color=ERROR)),
+            ft.TextButton(
+                "No",
+                autofocus=True,
+                on_click=lambda e: self._close_dialog(dlg),
+                style=ft.ButtonStyle(color=PRIMARY),
+            ),
+        ]
+        self._display_dialog(dlg)
+
+    def _notify_changed(self):
+        if self.on_products_changed is not None:
+            self.on_products_changed()
+
+    # ---------- Lista ----------
+    def load_data(self, e=None):
+        q = (self.search.value or "").strip()
+        prods = ps.list_products(q, incluir_inactivos=self.chk_inactivos.value)
+        rows = []
+        for p in prods:
+            pid = p["id"]
+            stock = int(p["stock"] or 0)
+            min_stock = int(p["min_stock"] or 0)
+            low = stock <= min_stock
+            estado = "Inactivo" if not p["is_active"] else ("Activo · Stock bajo" if low else "Activo")
+            stock_text = ft.Text(
+                str(stock),
+                color=ERROR if low else TEXT,
+                weight=ft.FontWeight.BOLD if low else None,
+            )
+            acciones = [
+                ft.TextButton(
+                    "Editar",
+                    on_click=self._make_edit_handler(pid),
+                    style=ft.ButtonStyle(color=PRIMARY),
+                )
+            ]
+            if p["is_active"]:
+                acciones.append(
+                    ft.TextButton(
+                        "Quitar",
+                        tooltip="Producto especial, no se puede quitar"
+                        if is_common_product(p)
+                        else None,
+                        disabled=is_common_product(p),
+                        on_click=lambda e, pid=pid, name=p["name"]: self._confirm_delete(pid, name),
+                        style=ft.ButtonStyle(color=ERROR),
+                    )
+                )
+            else:
+                acciones.append(
+                    ft.TextButton(
+                        "Reactivar",
+                        on_click=lambda e, pid=pid, name=p["name"]: self._confirm_reactivar(pid, name),
+                        style=ft.ButtonStyle(color=PRIMARY),
+                    )
+                )
+            rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(p["name"], color=TEXT)),
+                        ft.DataCell(ft.Text(p["barcode"] or "", color=TEXT)),
+                        ft.DataCell(ft.Text(_fmt_money(p["sale_price"]), color=TEXT)),
+                        ft.DataCell(ft.Text(_fmt_money(p["purchase_price"]), color=TEXT)),
+                        ft.DataCell(stock_text),
+                        ft.DataCell(ft.Text(str(min_stock), color=TEXT)),
+                        ft.DataCell(ft.Text(estado, color=ERROR if low else TEXT)),
+                        ft.DataCell(ft.Row(acciones, spacing=0)),
+                    ]
+                )
+            )
+        self.table.rows = rows
+        self.count_lbl.value = f"Mostrando {len(prods)} producto(s)."
+        self.empty_lbl.visible = not prods
+        self._page.update()
+
+    # ---------- Crear / editar ----------
+    # Flet solo hace await de un handler si el handler mismo es async def.
+    # Un lambda que llama a una funcion async solo crea la corrutina y la
+    # descarta ("coroutine ... was never awaited"): por eso los botones
+    # que abren el dialogo usan estos handlers async.
+    async def _on_add(self, e=None):
+        await self._open_dialog()
+
+    def _make_edit_handler(self, product_id):
+        async def handler(e=None):
+            await self._open_dialog(product_id)
+
+        return handler
+
+    async def _open_dialog(self, product_id=None):
+        is_edit = product_id is not None
+        data = None
+        if is_edit:
+            data = ps.get_product(product_id)
+            if data is None:
+                self._show_message("No se pudo cargar el producto.")
+                return
+
+        def field(label, value="", keyboard_number=False):
+            return ft.TextField(
+                label=label,
+                value=value,
+                color=TEXT,
+                label_style=ft.TextStyle(color=MUTED),
+                bgcolor=WHITE,
+                keyboard_type=ft.KeyboardType.NUMBER if keyboard_number else ft.KeyboardType.TEXT,
+            )
+
+        in_name = field("Nombre*", data.get("name", "") if data else "")
+        in_sale = field(
+            "Precio venta*",
+            str(data.get("sale_price", "")) if data else "",
+            keyboard_number=True,
+        )
+        in_purchase = field(
+            "Precio compra",
+            str(data.get("purchase_price", "")) if data else "",
+            keyboard_number=True,
+        )
+        in_barcode = field("Código de barras", data.get("barcode", "") if data else "")
+        in_stock = field(
+            "Stock actual", str(data.get("stock", "")) if data else "", keyboard_number=True
+        )
+        in_min_stock = field(
+            "Stock mínimo",
+            str(data.get("min_stock", "")) if data else "",
+            keyboard_number=True,
+        )
+        error_lbl = ft.Text("", color=ERROR)
+
+        dlg = ft.AlertDialog(
+            title=ft.Text(
+                "Editar producto" if is_edit else "Nuevo producto", color=TEXT
+            ),
+            content=ft.Column(
+                [in_name, in_sale, in_purchase, in_barcode, in_stock, in_min_stock, error_lbl],
+                tight=True,
+                width=380,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            bgcolor=WHITE,
+        )
+
+        def save(e):
+            name = (in_name.value or "").strip()
+            if not name:
+                error_lbl.value = "El nombre es obligatorio."
+                self._page.update()
+                return
+            sale = _parse_money_or_none(in_sale.value)
+            if sale is None:
+                error_lbl.value = "El precio de venta es obligatorio (solo números, $ y puntos)."
+                self._page.update()
+                return
+            purchase = _parse_money_or_none(in_purchase.value)
+            stock = _parse_money_or_none(in_stock.value)
+            min_stock = _parse_money_or_none(in_min_stock.value)
+            if purchase is None:
+                purchase = 0
+            if stock is None:
+                stock = 0
+            if min_stock is None:
+                min_stock = 0
+            barcode = (in_barcode.value or "").strip() or None
+            try:
+                if is_edit:
+                    ps.update_product(
+                        product_id,
+                        name=name,
+                        sale_price=sale,
+                        purchase_price=purchase,
+                        barcode=barcode,
+                        stock=stock,
+                        min_stock=min_stock,
+                    )
+                else:
+                    ps.create_product(
+                        name,
+                        sale,
+                        purchase_price=purchase,
+                        barcode=barcode,
+                        stock=stock,
+                        min_stock=min_stock,
+                    )
+            except ValueError as exc:
+                # Codigo duplicado u otro error de core: el dialogo queda
+                # abierto y no se pierde lo escrito (como Qt, M7).
+                error_lbl.value = str(exc)
+                self._page.update()
+                return
+            self._close_dialog(dlg)
+            self.load_data()
+            self._notify_changed()
+            self._show_message(
+                "Producto actualizado." if is_edit else "Producto creado."
+            )
+
+        dlg.actions = [
+            ft.FilledButton(
+                "Guardar", on_click=save, style=_state_style(PRIMARY, WHITE)
+            ),
+            ft.TextButton(
+                "Cancelar",
+                on_click=lambda e: self._close_dialog(dlg),
+                style=ft.ButtonStyle(color=PRIMARY),
+            ),
+        ]
+        self._display_dialog(dlg)
+        try:
+            await in_name.focus()
+        except Exception:
+            pass
+
+    # ---------- Quitar / desactivar / reactivar ----------
+    # Son sincronas a proposito (no esperan nada): se llaman desde lambdas
+    # de botones y desde do_delete, y asi siempre se ejecutan.
+    def _confirm_delete(self, product_id, name):
+        if name.strip().lower() == COMMON_PRODUCT_NAME.lower():
+            self._show_message(
+                "Producto común es un producto especial y no se puede quitar."
+            )
+            return
+
+        def do_delete():
+            try:
+                ps.delete_product(product_id)
+            except ValueError as exc:
+                self._offer_deactivate(product_id, str(exc))
+                return
+            self.load_data()
+            self._notify_changed()
+            self._show_message("Producto eliminado.")
+
+        self._ask_confirm("Quitar producto", f'¿Quitar "{name}"?', do_delete)
+
+    def _offer_deactivate(self, product_id, reason):
+        dlg = ft.AlertDialog(
+            title=ft.Text("Quitar producto", color=TEXT),
+            content=ft.Text(
+                f"{reason}\n\n¿Deseas desactivarlo? Ya no aparecerá en las ventas, "
+                "pero se podrá reactivar después.",
+                color=TEXT,
+            ),
+            bgcolor=WHITE,
+        )
+
+        def do_deactivate(e):
+            try:
+                ps.desactivar_producto(product_id)
+            except ValueError as exc:
+                self._close_dialog(dlg)
+                self._show_message(str(exc))
+                return
+            self._close_dialog(dlg)
+            self.load_data()
+            self._notify_changed()
+            self._show_message("Producto desactivado.")
+
+        dlg.actions = [
+            ft.TextButton("Sí, desactivar", on_click=do_deactivate, style=ft.ButtonStyle(color=ERROR)),
+            ft.TextButton(
+                "No",
+                autofocus=True,
+                on_click=lambda e: self._close_dialog(dlg),
+                style=ft.ButtonStyle(color=PRIMARY),
+            ),
+        ]
+        self._display_dialog(dlg)
+
+    def _confirm_reactivar(self, product_id, name):
+        def do_reactivate():
+            ps.reactivar_producto(product_id)
+            self.load_data()
+            self._notify_changed()
+            self._show_message("Producto reactivado.")
+
+        self._ask_confirm(
+            "Reactivar producto", f'¿Reactivar "{name}"?', do_reactivate
+        )
+
+    # ---------- Exportar CSV ----------
+    async def _export_csv(self, e=None):
+        try:
+            path = await self.picker.save_file(
+                dialog_title="Guardar lista de productos",
+                file_name="productos.csv",
+                file_type=ft.FilePickerFileType.CUSTOM,
+                allowed_extensions=["csv"],
+            )
+        except Exception as exc:
+            self._show_message(f"No se pudo abrir el diálogo para guardar: {exc}")
+            return
+        if not path:
+            return
+        self._save_csv_to(path)
+
+    def _save_csv_to(self, path):
+        try:
+            pbs.export_products_csv(path)
+        except Exception as exc:
+            self._show_message(f"No se pudo guardar la lista: {exc}")
+            return
+        self._show_message(f"Lista guardada en:\n{path}")
