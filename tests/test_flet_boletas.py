@@ -4,9 +4,13 @@ Nada sale del equipo: el SMTP es un servidor falso y la termica de red es
 un socket local. No se imprime en ninguna impresora real.
 """
 
+import os
+import re
+import shutil
 import socket
 import smtplib
 import threading
+import zlib
 
 import pytest
 
@@ -221,3 +225,165 @@ def test_modo_recomendado_es_impresora_de_windows(tmp_path, monkeypatch):
     monkeypatch.setattr(core_config, "CONFIG_PATH", str(tmp_path / "config.json"))
     assert bol.load_settings()[1]["print_mode"] == "windows"
     assert "recomendado" in bol.PRINT_MODES["windows"]
+
+
+# ---------- Encabezado del PDF con los datos del negocio ----------
+PAPER_80_PT = 226.77  # 80 mm en puntos
+
+
+def _pdf_content(path):
+    """Contenido descomprimido de la pagina (los PDF de fpdf2 van en Flate)."""
+    with open(path, "rb") as f:
+        raw = f.read()
+    parts = []
+    for m in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", raw, re.S):
+        try:
+            parts.append(zlib.decompress(m.group(1)).decode("latin-1"))
+        except zlib.error:
+            continue
+    return raw, "\n".join(parts)
+
+
+def _pdf_lines(path):
+    """[(tamano_de_letra, texto)] de cada linea impresa, en orden."""
+    _raw, content = _pdf_content(path)
+    size, out = None, []
+    for line in content.splitlines():
+        m = re.match(r"BT /F\d+ ([\d.]+) Tf ET", line)
+        if m:
+            size = float(m.group(1))
+            continue
+        m = re.match(r"BT [\d.]+ [\d.]+ Td \((.*)\) Tj ET$", line)
+        if m:
+            text = re.sub(r"\\([()\\])", r"\1", m.group(1))
+            out.append((size, text))
+    return out
+
+
+def _pdf_text(path):
+    return "\n".join(t for _s, t in _pdf_lines(path))
+
+
+def _cfg_file(tmp_path, monkeypatch, **cfg):
+    path = tmp_path / "config.json"
+    monkeypatch.setattr(core_config, "CONFIG_PATH", str(path))
+    core_config.save_config({**core_config.DEFAULT_CONFIG, **cfg}, str(path))
+
+
+def test_pdf_incluye_rut_direccion_y_telefono_de_la_config(temp_db, tmp_path, monkeypatch):
+    _cfg_file(
+        tmp_path, monkeypatch,
+        business_name="Cervecería Prueba", rut="76.123.456-7",
+        address="Av. Providencia 1234", phone="+56 9 1234 5678",
+    )
+    # cfg=None: los datos salen de load_config(), como al cobrar en la app.
+    data = bol.build_receipt(_venta(), received=5000)
+    text = _pdf_text(bol.build_pdf(data, str(tmp_path / "c.pdf"), paper_mm=80))
+    for expected in ("Cervecería Prueba", "RUT: 76.123.456-7", "Av. Providencia 1234", "Tel: +56 9 1234 5678"):
+        assert expected in text, expected
+    # Orden del encabezado: nombre, RUT, direccion, telefono y luego el titulo.
+    order = [text.index(x) for x in ("Cervecería Prueba", "RUT:", "Av. Providencia", "Tel:", bol.DOC_TITLE)]
+    assert order == sorted(order)
+
+
+def test_pdf_mantiene_titulo_aviso_numero_fecha_y_gracias(temp_db, tmp_path, monkeypatch):
+    _cfg_file(tmp_path, monkeypatch, rut="76.123.456-7")
+    sale_id = _venta()
+    data = bol.build_receipt(sale_id, received=5000)
+    text = _pdf_text(bol.build_pdf(data, str(tmp_path / "c.pdf")))
+    assert bol.DOC_TITLE in text
+    assert "no válido como boleta tributaria" in text
+    assert f"N° {sale_id}" in text and data["created_at"] in text
+    assert bol.THANKS.replace("¡", "") in text.replace("¡", "")
+
+
+def test_pdf_con_campos_vacios_no_imprime_lineas_en_blanco(temp_db, tmp_path, monkeypatch):
+    _cfg_file(tmp_path, monkeypatch, business_name="Mi POS", rut="", address="", phone="")
+    data = bol.build_receipt(_venta(), received=5000)
+    blocks = bol.receipt_blocks(data, 42)
+    # Sin datos opcionales: nombre y enseguida la primera linea separadora.
+    assert blocks[0][0].strip() == "Mi POS" and blocks[1][1] == "rule"
+    assert all(text.strip() for text, _style in blocks)  # ninguna linea vacia
+    text = _pdf_text(bol.build_pdf(data, str(tmp_path / "c.pdf")))
+    assert "RUT" not in text and "Tel:" not in text
+    assert bol.DOC_TITLE in text and "$4.000" in text
+
+
+@pytest.mark.parametrize(
+    "cfg",
+    [
+        {"rut": None, "address": None, "phone": None},          # null en config.json
+        {"rut": "   ", "address": "  ", "phone": " "},          # solo espacios
+        {"phone": 56912345678},                                  # numero, no texto
+        {"business_name": ""},                                   # nombre vacio -> "Mi POS"
+    ],
+)
+def test_pdf_no_se_rompe_con_valores_raros_en_config(temp_db, tmp_path, cfg):
+    data = bol.build_receipt(_venta(), received=5000, cfg=cfg)
+    path = bol.build_pdf(data, str(tmp_path / "c.pdf"))
+    text = _pdf_text(path)
+    assert bol.DOC_TITLE in text
+    if cfg.get("phone") == 56912345678:
+        assert "Tel: 56912345678" in text
+    elif "business_name" in cfg:
+        assert "Mi POS" in text
+    else:
+        assert "RUT" not in text and "Tel:" not in text
+
+
+def test_pdf_separadores_entre_encabezado_items_y_totales(temp_db):
+    data = bol.build_receipt(_venta(), received=5000, cfg=CFG)
+    styles = [s for _t, s in bol.receipt_blocks(data, 42)]
+    texts = [t for t, _s in bol.receipt_blocks(data, 42)]
+    rules = [i for i, s in enumerate(styles) if s == "rule"]
+    first_item = next(i for i, t in enumerate(texts) if t.startswith("Cerveza"))
+    total = next(i for i, t in enumerate(texts) if t.startswith("TOTAL"))
+    # Hay una regla antes de los items, otra entre items y totales, y otra al cierre.
+    assert any(r < first_item for r in rules)
+    assert any(first_item < r < total for r in rules)
+    assert any(r > total for r in rules)
+    assert styles[total] == "bold_left"  # TOTAL en negrita
+    assert styles[0] == "big_center"     # nombre centrado y en negrita
+
+
+def test_pdf_es_blanco_y_negro_ancho_ticket_sin_imagenes(temp_db, tmp_path):
+    data = bol.build_receipt(_venta(), received=5000, cfg=CFG)
+    raw, content = _pdf_content(bol.build_pdf(data, str(tmp_path / "c.pdf"), paper_mm=80))
+    assert f"/MediaBox [0 0 {PAPER_80_PT}".encode() in raw  # 80 mm de ancho
+    assert not re.search(r"\b(rg|RG|k|K|sc|SC|scn|SCN)\b", content)  # ningun operador de color
+    # Sin logo ni imagenes. "/ProcSet [... /ImageB ...]" lo escribe fpdf2 siempre
+    # y no es una imagen: se buscan objetos de imagen reales.
+    assert not re.search(rb"/Subtype\s*/Image", raw) and b"/XObject" not in raw
+
+
+def test_pdf_nombre_largo_cabe_en_el_ancho_del_ticket(temp_db, tmp_path):
+    cfg = dict(CFG, business_name="Cervecería Artesanal Los Tres Hermanos SpA")
+    data = bol.build_receipt(_venta(), received=5000, cfg=cfg)
+    lines = _pdf_lines(bol.build_pdf(data, str(tmp_path / "c.pdf"), paper_mm=80))
+    for size, text in lines:
+        # Courier: cada caracter mide 0.6 de la altura de letra.
+        width_mm = len(text) * 0.6 * size / 72 * 25.4
+        assert width_mm <= 80 - 6 - 2, f"{text!r} mide {width_mm:.1f} mm y se sale del ticket"
+
+
+def test_pdf_cambios_no_tocan_el_contenido_de_la_venta(temp_db):
+    data = bol.build_receipt(_venta(), received=5000, cfg=CFG)
+    text = bol.receipt_text(data, 42)
+    for expected in ("2 x $1.500", "$3.000", "1 x $1.000", "$4.000", "Efectivo", "$5.000", "$1.000"):
+        assert expected in text, expected
+
+
+def test_pdf_de_ejemplo_para_revisar(temp_db, tmp_path, monkeypatch):
+    """Genera un PDF completo. Con MIPOS_SAMPLE_PDF_DIR lo deja ahi para verlo."""
+    _cfg_file(
+        tmp_path, monkeypatch,
+        business_name="Cervecería Prueba", rut="76.123.456-7",
+        address="Av. Providencia 1234, Santiago", phone="+56 9 1234 5678",
+    )
+    data = bol.build_receipt(_venta(), received=5000)
+    path = bol.build_pdf(data, str(tmp_path / "ejemplo.pdf"), paper_mm=80)
+    assert os.path.getsize(path) > 1000
+    out_dir = os.environ.get("MIPOS_SAMPLE_PDF_DIR")
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        shutil.copyfile(path, os.path.join(out_dir, "comprobante_ejemplo.pdf"))

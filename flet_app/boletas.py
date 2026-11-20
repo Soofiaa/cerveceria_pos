@@ -19,6 +19,7 @@ pywin32 se importa solo cuando hace falta, asi los tests corren sin el.
 """
 
 import base64
+import math
 import os
 import re
 import smtplib
@@ -186,10 +187,11 @@ def build_receipt(sale_id, received=None, cfg=None):
     total = int(sale["total"] or 0)
     method = sale["pay_method"] or "efectivo"
     data = {
-        "business_name": (cfg.get("business_name") or "Mi POS").strip() or "Mi POS",
-        "rut": (cfg.get("rut") or "").strip(),
-        "address": (cfg.get("address") or "").strip(),
-        "phone": (cfg.get("phone") or "").strip(),
+        # str(): un telefono escrito como numero en config.json no debe romper el comprobante.
+        "business_name": str(cfg.get("business_name") or "Mi POS").strip() or "Mi POS",
+        "rut": str(cfg.get("rut") or "").strip(),
+        "address": str(cfg.get("address") or "").strip(),
+        "phone": str(cfg.get("phone") or "").strip(),
         "sale_id": sale["id"],
         "created_at": sale["created_at"] or "",
         "items": [
@@ -235,13 +237,18 @@ def receipt_blocks(data, cols=42):
 
     rule = ("-" * cols, "rule")
 
-    center(data["business_name"], "big_center")
-    if data["rut"]:
-        center(f"RUT: {data['rut']}")
-    if data["address"]:
-        center(data["address"])
-    if data["phone"]:
-        center(f"Tel: {data['phone']}")
+    # Encabezado: solo las lineas con valor (nunca una linea en blanco ni
+    # "RUT:" vacio). `or ""` cubre campos ausentes o null en config.json.
+    def field(key):
+        return str(data.get(key) or "").strip()
+
+    center(field("business_name") or "Mi POS", "big_center")
+    if field("rut"):
+        center(f"RUT: {field('rut')}")
+    if field("address"):
+        center(field("address"))
+    if field("phone"):
+        center(f"Tel: {field('phone')}")
     out.append(rule)
     center(DOC_TITLE, "bold_center")
     center(DOC_DISCLAIMER)
@@ -290,6 +297,14 @@ def build_pdf(data, path=None, paper_mm=80):
         size = font_size + (2.4 if style == "big_center" else 0)
         pdf.set_font("Courier", "B" if bold else "", size)
         safe = text.encode("latin-1", "replace").decode("latin-1")
+        # Courier es de ancho fijo: un nombre largo en letra grande se sale
+        # del papel y queda cortado. Se achica la letra hasta que quepa.
+        avail = width - 2 * pdf.c_margin
+        text_w = pdf.get_string_width(safe)
+        if text_w > avail:
+            # Hacia abajo a 2 decimales: el PDF guarda el tamano con 2 decimales
+            # y redondear al mas cercano lo dejaba 0,009 mm sobre el limite.
+            pdf.set_font_size(math.floor(size * avail / text_w * 100) / 100)
         pdf.cell(width, line_h, safe, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     if path is None:
         path = os.path.join(boletas_dir(), f"comprobante_{data['sale_id']}.pdf")
