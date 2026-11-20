@@ -32,13 +32,30 @@ REQUIRED_KEYS = {
 }
 
 
+class RecordingWindow(types.SimpleNamespace):
+    """Ventana falsa que anota cada escritura de atributo (como page.window de Flet)."""
+
+    def __init__(self):
+        object.__setattr__(self, "writes", [])
+        super().__init__(
+            width=1280, height=720, min_width=1000, min_height=650,
+            maximized=False, minimized=False,
+        )
+        self.writes.clear()  # lo anterior es solo el estado inicial del doble
+
+    def __setattr__(self, name, value):
+        if name != "writes":
+            self.writes.append((name, value))
+        super().__setattr__(name, value)
+
+
 class FakePage:
     def __init__(self):
         self.controls = []
         self.overlay = []
         self.bgcolor = ""
         self.title = ""
-        self.window = types.SimpleNamespace(width=1280, height=720, min_width=1000, min_height=650)
+        self.window = RecordingWindow()
         self.updates = 0
 
     def add(self, *controls):
@@ -511,3 +528,86 @@ def test_boton_calendario_abre_datepicker_con_show_dialog(temp_db):
     botones[1].on_click(None)
     assert abiertos == [view.dp_desde, view.dp_hasta]
     assert view.dp_desde not in page.overlay and view.dp_hasta not in page.overlay
+
+
+# ---------- 12. El cambio de tema no toca el tamano ni el maximizado de la ventana ----------
+SIZE_ATTRS = {"width", "height", "min_width", "min_height", "maximized", "minimized"}
+
+
+def _pick_theme(page, label):
+    """Va a Configuracion y pulsa el boton de tema, como lo hace la cajera."""
+    asyncio.run(_pestanas(page)["Configuración"].on_click(None))
+    view = _area(page).controls[0].content
+    next(b for b in view.theme_row.controls if b.content == label).on_click(None)
+
+
+def test_primer_arranque_fija_tamano_inicial_de_la_ventana(temp_db, cfg_file):
+    page = FakePage()
+    pos_main.main(page)
+    w = page.window
+    assert (w.width, w.height, w.min_width, w.min_height) == (1280, 720, 1000, 650)
+    assert w.maximized is False
+
+
+def test_cambio_de_tema_conserva_ventana_maximizada(temp_db, cfg_file):
+    page = FakePage()
+    pos_main.main(page)
+    page.window.maximized = True        # la cajera maximiza
+    page.window.width, page.window.height = 1920, 1040  # tamano que Flet reporta maximizado
+    page.window.writes.clear()
+
+    _pick_theme(page, "Oscuro")
+
+    assert pos_main.PRIMARY == THEMES["oscuro"]["primary"]   # el tema si cambio
+    assert page.window.maximized is True
+    assert (page.window.width, page.window.height) == (1920, 1040)
+    assert not [w for w in page.window.writes if w[0] in SIZE_ATTRS]
+
+
+def test_cambio_de_tema_conserva_el_tamano_que_puso_la_cajera(temp_db, cfg_file):
+    page = FakePage()
+    pos_main.main(page)
+    page.window.width, page.window.height = 1500, 860   # redimensionada a mano
+    page.window.writes.clear()
+
+    _pick_theme(page, "Menta")
+
+    assert pos_main.PRIMARY == THEMES["menta"]["primary"]
+    assert (page.window.width, page.window.height) == (1500, 860)
+    assert page.window.maximized is False
+    assert (page.window.min_width, page.window.min_height) == (1000, 650)
+    assert not [w for w in page.window.writes if w[0] in SIZE_ATTRS]
+
+
+def test_varios_cambios_de_tema_seguidos_no_tocan_la_ventana(temp_db, cfg_file):
+    page = FakePage()
+    pos_main.main(page)
+    page.window.maximized = True
+    page.window.width, page.window.height = 1920, 1040
+    page.window.writes.clear()
+
+    for label in ("Oscuro", "Grafito", "Neutro", "Lila"):
+        _pick_theme(page, label)
+
+    assert pos_main.PRIMARY == THEMES["lila"]["primary"]
+    assert page.window.maximized is True
+    assert (page.window.width, page.window.height) == (1920, 1040)
+    assert not [w for w in page.window.writes if w[0] in SIZE_ATTRS]
+
+
+def test_cambio_de_tema_no_toca_otros_datos_al_conservar_la_ventana(temp_db, cfg_file):
+    """El arreglo solo afecta a la ventana: ticket, busqueda y tema siguen igual que antes."""
+    ps.create_product("Rubia", 1500, barcode="7801", stock=50)
+    page = FakePage()
+    pos_main.main(page)
+    tid = ts.list_open_tickets()[0]["id"]
+    _search_input(page).value = "rub"
+    page.window.maximized = True
+
+    _pick_theme(page, "Grafito")
+
+    assert [t["id"] for t in ts.list_open_tickets()] == [tid]
+    assert json.loads(cfg_file.read_text(encoding="utf-8"))["theme"] == "grafito"
+    asyncio.run(_pestanas(page)["POS"].on_click(None))
+    assert _search_input(page).value == "rub"
+    assert page.window.maximized is True

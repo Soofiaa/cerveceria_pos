@@ -310,10 +310,14 @@ def main(page: ft.Page, restore=None):
     # El modo (claro/oscuro) sigue al tema, no a Windows: con un tema claro
     # y Windows oscuro, los controles sin color propio salian con texto casi
     # blanco. Los temas oscuros piden modo oscuro por la misma razon.
-    page.window.width = 1280
-    page.window.height = 720
-    page.window.min_width = 1000
-    page.window.min_height = 650
+    # Tamano de la ventana solo en el primer armado. Al cambiar de tema main()
+    # se vuelve a ejecutar (restore no vacio): fijar width/height ahi achica la
+    # ventana y le quita el maximizado.
+    if not restore:
+        page.window.width = 1280
+        page.window.height = 720
+        page.window.min_width = 1000
+        page.window.min_height = 650
     db_manager.bootstrap()
 
     current_view = {"name": "pos"}
