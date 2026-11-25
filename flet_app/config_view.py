@@ -16,6 +16,7 @@ import flet as ft
 
 from core import config as core_config
 from flet_app import boletas as bol
+from flet_app import multicaja
 from flet_app.theme import THEMES
 
 THEME_LABELS = {
@@ -27,6 +28,11 @@ THEME_LABELS = {
     "lila": "Lila",
 }
 PREFIXES = ("Ticket", "Mesa")
+MODE_LABELS = {
+    "standalone": "Una sola caja (sin red)",
+    "server": "Caja 1 (principal, comparte su base)",
+    "client": "Caja adicional (se conecta a la Caja 1)",
+}
 
 
 def _caps(text, colors):
@@ -126,6 +132,40 @@ class ConfigView(ft.Column):
         )
         self._sync_printer_visibility()
 
+        # Modo de la caja (Fase 5.1). Se aplica al reiniciar la app.
+        caja = multicaja.get_caja_settings(cfg)
+        self.dd_caja_mode = ft.Dropdown(
+            label="Modo de esta caja",
+            tooltip="Modo de esta caja",
+            value=caja["mode"],
+            options=[ft.DropdownOption(key=k, text=v) for k, v in MODE_LABELS.items()],
+            width=400, on_select=self._sync_caja_visibility,
+        )
+        self.in_caja_name = self._field("Nombre de esta caja", cfg.get("caja_name") or "")
+        self.in_caja_number = self._field("Número de caja", str(caja["caja_number"]), width=140)
+        self.in_server_url = self._field("Dirección de la Caja 1", cfg.get("server_url") or "")
+        # Caja adicional: pega aqui la clave que muestra la Caja 1.
+        self.in_api_token = self._field("Clave de la Caja 1", cfg.get("api_token") or "")
+        self.caja_server_box = ft.Column([self.in_server_url, self.in_api_token], tight=True)
+        # Caja 1: muestra la clave generada para copiarla en las cajas adicionales.
+        self.txt_token = ft.TextField(
+            label="Clave de esta Caja 1 (cópiala en las cajas adicionales)",
+            value=str(cfg.get("api_token") or ""),
+            read_only=True, width=340, color=colors["text"],
+            hint_text="Se genera al iniciar la Caja 1",
+        )
+        self.clipboard = ft.Clipboard()  # servicio: se registra solo en la pagina
+        self.btn_copy_token = ft.IconButton(
+            ft.Icons.CONTENT_COPY, tooltip="Copiar la clave", on_click=self._copy_token,
+        )
+        self.caja_token_box = ft.Column(
+            [ft.Row([self.txt_token, self.btn_copy_token], spacing=4),
+             ft.Text("Sin esta clave, las cajas adicionales no pueden conectarse a la Caja 1.",
+                     size=12, color=colors["secondary"])],
+            tight=True,
+        )
+        self._sync_caja_visibility()
+
         self.msg = ft.Text("", color=colors["secondary"])
         self.btn_guardar = ft.FilledButton("Guardar", on_click=self._ask_save)
 
@@ -144,6 +184,15 @@ class ConfigView(ft.Column):
             ft.Divider(),
             _caps("Tema visual", colors),
             self.theme_row,
+            ft.Divider(),
+            _caps("Modo de la caja", colors),
+            ft.Text("Cambiar el modo se aplica al reiniciar la app. Una caja adicional no usa base "
+                    "propia: vende con los productos y el stock de la Caja 1.",
+                    size=12, color=colors["secondary"]),
+            self.dd_caja_mode,
+            ft.Row([self.in_caja_name, self.in_caja_number], spacing=12),
+            self.caja_server_box,
+            self.caja_token_box,
             ft.Divider(),
             _caps("Impresora y correo", colors),
             ft.Text(
@@ -188,6 +237,27 @@ class ConfigView(ft.Column):
         self._page.update()
         self._on_theme_change(name)
 
+    # ---------- Modo de la caja ----------
+    def _sync_caja_visibility(self, e=None):
+        # La direccion de la Caja 1 solo se pide en una caja adicional.
+        self.caja_server_box.visible = self.dd_caja_mode.value == "client"
+        # La clave generada solo se muestra en la Caja 1 (la que sirve la API).
+        self.caja_token_box.visible = self.dd_caja_mode.value == "server"
+        if e is not None:
+            self._page.update()
+
+    async def _copy_token(self, e=None):
+        token = self.txt_token.value or ""
+        if not token:
+            self.msg.value = "Aún no hay clave: se genera al iniciar la Caja 1."
+            self.msg.color = self.colors["danger"]
+            self._page.update()
+            return
+        await self.clipboard.set(token)
+        self.msg.value = "Clave copiada."
+        self.msg.color = self.colors["primary"]
+        self._page.update()
+
     # ---------- Impresora / correo ----------
     def _sync_printer_visibility(self, e=None):
         self.net_row.visible = self.dd_mode.value == "escpos_red"
@@ -222,8 +292,24 @@ class ConfigView(ft.Column):
         self._open_message(dlg)
 
     def _save(self):
+        mode = self.dd_caja_mode.value or multicaja.DEFAULT_MODE
+        if mode == "client":
+            error = multicaja.validate_client_url(self.in_server_url.value)
+            if error:
+                self.msg.value = error
+                self.msg.color = self.colors["danger"]
+                self._page.update()
+                return
         cfg = dict(core_config.load_config())  # copia: no mutar DEFAULT_CONFIG
         cfg.update({
+            "mode": mode,
+            "server_url": multicaja.normalize_url(self.in_server_url.value) if mode == "client" else (cfg.get("server_url") or ""),
+            "caja_number": multicaja._caja_number({"caja_number": self.in_caja_number.value}),
+            "caja_name": (self.in_caja_name.value or "").strip(),
+            # Caja adicional: la que se pego. Caja 1 y standalone: la que ya hay (la
+            # generada al arrancar); el campo de la caja adicional esta oculto y vacio.
+            "api_token": (self.in_api_token.value or "").strip() if mode == "client"
+            else str(cfg.get("api_token") or "").strip(),
             "business_name": (self.in_name.value or "").strip() or "Mi POS",
             "rut": (self.in_rut.value or "").strip(),
             "address": (self.in_address.value or "").strip(),
@@ -261,8 +347,9 @@ class ConfigView(ft.Column):
 
     # ---------- Estado al reconstruir la interfaz por cambio de tema ----------
     _FIELDS = ("in_name", "in_rut", "in_address", "in_phone", "in_logo", "in_host", "in_port",
+               "in_caja_name", "in_caja_number", "in_server_url", "in_api_token",
                "in_smtp_host", "in_smtp_port", "in_smtp_user", "in_smtp_pass")
-    _DROPS = ("dd_prefix", "dd_mode", "dd_printer", "dd_paper", "dd_smtp_sec")
+    _DROPS = ("dd_prefix", "dd_mode", "dd_printer", "dd_paper", "dd_smtp_sec", "dd_caja_mode")
 
     def snapshot(self):
         """Lo escrito (aun sin guardar), para no perderlo al cambiar de tema."""
@@ -278,6 +365,7 @@ class ConfigView(ft.Column):
                 getattr(self, n).value = data[n]
         self.chk_email.value = data.get("chk_email", self.chk_email.value)
         self._sync_printer_visibility()
+        self._sync_caja_visibility()
 
     # ---------- Repintado al cambiar de tema ----------
     def apply_colors(self, colors):
@@ -287,7 +375,8 @@ class ConfigView(ft.Column):
         self.msg.color = colors["secondary"]
         for tf in (self.in_name, self.in_rut, self.in_address, self.in_phone, self.in_logo,
                    self.in_host, self.in_port, self.in_smtp_host, self.in_smtp_port,
-                   self.in_smtp_user, self.in_smtp_pass):
+                   self.in_smtp_user, self.in_smtp_pass, self.in_caja_name, self.in_caja_number,
+                   self.in_server_url, self.in_api_token, self.txt_token):
             tf.color = colors["text"]
         self.no_printers.color = colors["danger"]
         self.btn_guardar.style = ft.ButtonStyle(bgcolor=colors["primary"], color=colors["primary_text"])

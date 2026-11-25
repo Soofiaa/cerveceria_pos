@@ -56,6 +56,13 @@ def cobrar_ticket(ticket_id: int) -> Tuple[int, List[Dict[str, Any]]]:
     with get_conn() as con:
         cur = con.cursor()
 
+        # Bloqueo de escritura ANTES de leer el ticket. Sin esto, dos cobros del
+        # mismo ticket (dos cajas) lo leian "abierto" a la vez y los dos vendian:
+        # dos ventas y el stock descontado dos veces. Con BEGIN IMMEDIATE el
+        # segundo espera (timeout de sqlite3) y, al entrar, ya no encuentra el
+        # ticket y falla con "Ticket no existe.".
+        cur.execute("BEGIN IMMEDIATE")
+
         # Obtener ticket
         cur.execute("""
             SELECT id, COALESCE(pay_method,''), COALESCE(pending_total,0)

@@ -37,11 +37,10 @@ import flet as ft
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import config as core_config  # noqa: E402
-from core import db_manager  # noqa: E402
-from core import product_service as ps  # noqa: E402
-from core import sales_service as ss  # noqa: E402
-from core import ticket_service as ts  # noqa: E402
 from flet_app import boletas as bol  # noqa: E402
+from flet_app.api_client import ApiError, SinConexion  # noqa: E402
+from flet_app.backend import LocalBackend, make_backend  # noqa: E402
+from flet_app.multicaja import ensure_api_token, get_caja_settings  # noqa: E402
 from flet_app import productos_view as productos_view_module  # noqa: E402
 from flet_app.productos_view import ProductosView  # noqa: E402
 from flet_app.reportes_view import ReportesView  # noqa: E402
@@ -110,6 +109,11 @@ apply_palette("lila")
 COMMON_PRODUCT_NAME = "Producto común"
 GRID_LIMIT = 12
 
+# Acceso a datos del POS. Por defecto es la base local (standalone / Caja 1) y
+# main() lo cambia a la API de la Caja 1 en modo cliente. Las funciones de
+# logica pura de abajo lo leen de aqui.
+backend = LocalBackend()
+
 # Mismos valores internos que la app Qt (ui/charge_dialog.py).
 PAY_METHODS = [
     ("efectivo", "Efectivo"),
@@ -144,7 +148,7 @@ def get_next_ticket_number(prefix="Ticket"):
     """
     taken = set()
     head = f"{prefix} "
-    for t in ts.list_open_tickets():
+    for t in backend.list_open_tickets():
         name = (t.get("name") or "").strip()
         if name.startswith(head):
             try:
@@ -178,10 +182,10 @@ def find_product(query):
     q = (query or "").strip()
     if not q:
         return "empty", None
-    exact = ps.find_product_by_exact_code_or_name(q)
+    exact = backend.find_product_by_exact_code_or_name(q)
     if exact is not None and not is_common_product(exact):
         return "one", exact
-    cand = [p for p in ps.list_products(q) if not is_common_product(p)]
+    cand = [p for p in backend.list_products(q) if not is_common_product(p)]
     if len(cand) == 1:
         return "one", cand[0]
     if len(cand) > 1:
@@ -200,7 +204,7 @@ def search_grid_products(query, limit=GRID_LIMIT):
     q = (query or "").strip()
     if not q:
         return [], 0
-    matches = [p for p in ps.list_products(q) if not is_common_product(p)]
+    matches = [p for p in backend.list_products(q) if not is_common_product(p)]
     return matches[:limit], len(matches)
 
 
@@ -223,8 +227,8 @@ def low_stock_remaining(product, items):
 
 def find_empty_ticket(exclude_id=None):
     """Id del ticket abierto vacio mas reciente, o None."""
-    for t in ts.list_open_tickets():
-        if t["id"] != exclude_id and not ts.list_items(t["id"]):
+    for t in backend.list_open_tickets():
+        if t["id"] != exclude_id and not backend.list_items(t["id"]):
             return t["id"]
     return None
 
@@ -290,13 +294,52 @@ def _caps(text):
     return ft.Text(text.upper(), size=11, weight=ft.FontWeight.W_800, color=MUTED)
 
 
+# ---------- Servidor de la Caja 1 ----------
+_api_thread = None
+
+
+def start_api_server_if_needed(settings=None):
+    """En modo "server" levanta la API en un hilo propio (una sola vez por proceso).
+
+    Devuelve True si la API quedo corriendo. En standalone y client no hace nada.
+    Reconstruir la UI por cambio de tema vuelve a llamar a main(): el hilo no se duplica.
+    """
+    global _api_thread
+    settings = settings or get_caja_settings()
+    if settings["mode"] != "server":
+        return False
+    # Antes del hilo: asi la clave ya existe cuando se arma Configuracion y se
+    # puede copiar a las cajas adicionales (el hilo tambien la garantiza).
+    ensure_api_token()
+    if _api_thread is not None and _api_thread.is_alive():
+        return True
+    import threading
+
+    from flet_app import api_server
+
+    def _run():
+        try:
+            # La base ya la preparo main() con backend.start(): no se repite aqui.
+            api_server.run(port=settings["api_port"], bootstrap=False)
+        except OSError as exc:  # puerto ocupado u otra Caja 1 ya corriendo
+            print(f"No se pudo iniciar la API de la Caja 1: {exc}", file=sys.stderr)
+
+    _api_thread = threading.Thread(target=_run, name="mipos-api", daemon=True)
+    _api_thread.start()
+    return True
+
+
 # ---------- UI ----------
 def main(page: ft.Page, restore=None):
     """Arma la app. `restore` trae el estado al reconstruir por cambio de tema."""
     restore = restore or {}
-    # Antes de load_config(): esa funcion crea config.json con "neutro" si
-    # no existe, y el tema debe leerse del archivo tal como estaba.
+    global backend
+    # Antes de cualquier load_config(): esa funcion crea config.json con
+    # "neutro" si no existe, y el tema debe leerse del archivo tal como estaba.
     theme_name = restore.get("theme") or _saved_theme()
+    # En modo cliente el backend es la API de la Caja 1 y NO se abre ninguna
+    # base local. Al reconstruir por cambio de tema se reutiliza el mismo.
+    backend = restore.get("backend") or make_backend(get_caja_settings())
     cfg = core_config.load_config()
     business_name = (cfg.get("business_name") or "Mi POS").strip() or "Mi POS"
     current_theme = {"name": theme_name}
@@ -318,7 +361,8 @@ def main(page: ft.Page, restore=None):
         page.window.height = 720
         page.window.min_width = 1000
         page.window.min_height = 650
-    db_manager.bootstrap()
+    backend.start()
+    start_api_server_if_needed()
 
     current_view = {"name": "pos"}
 
@@ -389,6 +433,28 @@ def main(page: ft.Page, restore=None):
         alignment=ft.Alignment.CENTER,
         padding=ft.Padding.symmetric(vertical=22),
         visible=False,
+    )
+    # Estado de la conexion con la Caja 1 (solo modo cliente). Sin conexion no
+    # se vende: no hay cola de ventas offline en esta fase.
+    conn = {"online": True}
+    conn_text = ft.Text("", color=ERROR, weight=ft.FontWeight.W_600, expand=True)
+    conn_badge = ft.Container(
+        content=ft.Row(
+            [ft.Icon(ft.Icons.WIFI_OFF, color=ERROR, size=18),
+             ft.Text("Sin conexión con la Caja 1", color=ERROR, weight=ft.FontWeight.W_700, size=13)],
+            spacing=6, tight=True,
+        ),
+        padding=ft.Padding.symmetric(horizontal=10, vertical=6),
+        border=ft.Border.all(1, ERROR), border_radius=8, visible=False,
+    )
+    conn_bar = ft.Container(
+        content=ft.Row(
+            [ft.Icon(ft.Icons.WIFI_OFF, color=ERROR, size=20), conn_text,
+             ft.TextButton("Reintentar", on_click=lambda e: retry_connection(),
+                           style=ft.ButtonStyle(color=ERROR))],
+            spacing=8,
+        ),
+        bgcolor=WARN_BG, padding=10, border_radius=10, visible=False,
     )
     stock_text = ft.Text("", color=WARN_TEXT)
     stock_bar = ft.Container(
@@ -472,6 +538,62 @@ def main(page: ft.Page, restore=None):
         ]
         open_dialog(dlg)
 
+    def guarded(fn):
+        """Handler de la UI que tolera la caida de la Caja 1: marca "sin conexion"
+        y sigue, en vez de dejar escapar la excepcion de red (sync o async)."""
+        if asyncio.iscoroutinefunction(fn):
+            async def awrapper(*a, **k):
+                try:
+                    return await fn(*a, **k)
+                except SinConexion:
+                    set_offline()
+                    page.update()
+                except ApiError as exc:
+                    if exc.status != 401:
+                        raise
+                    set_offline(str(exc))
+                    page.update()
+            return awrapper
+
+        def wrapper(*a, **k):
+            try:
+                return fn(*a, **k)
+            except SinConexion:
+                set_offline()
+                page.update()
+            except ApiError as exc:
+                if exc.status != 401:
+                    raise
+                set_offline(str(exc))
+                page.update()
+        return wrapper
+
+    # ---------- Conexion con la Caja 1 (modo cliente) ----------
+    def set_offline(reason=None):
+        """Marca la caja como sin conexion: muestra el aviso y bloquea el cobro.
+
+        `reason` explica una causa distinta de la red caida (por ejemplo, clave incorrecta)."""
+        conn["online"] = False
+        conn_text.value = reason or "Sin conexión con la Caja 1. No se puede vender hasta que vuelva."
+        conn_bar.visible = True
+        conn_badge.visible = True
+        cobrar_btn.disabled = True
+
+    def set_online():
+        conn["online"] = True
+        conn_bar.visible = False
+        conn_badge.visible = False
+
+    def retry_connection():
+        """Vuelve a consultar la Caja 1; si responde, la caja retoma su estado normal."""
+        if backend.ping():
+            set_online()
+            refresh_grid()
+            refresh_ui()
+        else:
+            set_offline()
+            page.update()
+
     # ---------- Tickets ----------
     def make_load_handler(tid):
         async def handler(e):
@@ -482,7 +604,14 @@ def main(page: ft.Page, restore=None):
 
     def refresh_ticket_list():
         ticket_list.controls = []
-        for t in ts.list_open_tickets():
+        try:
+            open_tickets_now = backend.list_open_tickets()
+        except (SinConexion, ApiError) as exc:
+            if isinstance(exc, ApiError) and exc.status != 401:
+                raise
+            set_offline(str(exc) if isinstance(exc, ApiError) else None)
+            return
+        for t in open_tickets_now:
             tid = t["id"]
             is_current = tid == current_ticket_id
             ticket_list.controls.append(
@@ -519,9 +648,10 @@ def main(page: ft.Page, restore=None):
                 )
             )
 
+    @guarded
     def load_ticket(tid):
         nonlocal current_ticket_id
-        if ts.get_ticket(tid) is None:
+        if backend.get_ticket(tid) is None:
             return
         current_ticket_id = tid
         stock_bar.visible = False
@@ -529,20 +659,21 @@ def main(page: ft.Page, restore=None):
 
     def ensure_ticket():
         nonlocal current_ticket_id
-        if current_ticket_id is not None and ts.get_ticket(current_ticket_id) is not None:
+        if current_ticket_id is not None and backend.get_ticket(current_ticket_id) is not None:
             return current_ticket_id
         # Si ya hay tickets abiertos se sigue con el mas reciente en vez de
         # crear uno vacio nuevo en cada lanzamiento.
-        open_tickets = ts.list_open_tickets()
+        open_tickets = backend.list_open_tickets()
         if open_tickets:
             current_ticket_id = open_tickets[0]["id"]
             return current_ticket_id
-        current_ticket_id = ts.create_ticket(new_ticket_name())
+        current_ticket_id = backend.create_ticket(new_ticket_name())
         return current_ticket_id
 
+    @guarded
     async def new_ticket(e):
         nonlocal current_ticket_id
-        current_ticket_id = ts.create_ticket(new_ticket_name())
+        current_ticket_id = backend.create_ticket(new_ticket_name())
         stock_bar.visible = False
         refresh_ui()
         await focus_search()
@@ -552,12 +683,12 @@ def main(page: ft.Page, restore=None):
 
         def do_delete():
             nonlocal current_ticket_id
-            ts.delete_ticket(current_ticket_id)
-            remaining = ts.list_open_tickets()
+            backend.delete_ticket(current_ticket_id)
+            remaining = backend.list_open_tickets()
             if remaining:
                 current_ticket_id = remaining[0]["id"]
             else:
-                current_ticket_id = ts.create_ticket(new_ticket_name())
+                current_ticket_id = backend.create_ticket(new_ticket_name())
             stock_bar.visible = False
             refresh_ui()
 
@@ -566,21 +697,34 @@ def main(page: ft.Page, restore=None):
     # ---------- Tabla y total ----------
     def make_qty_handler(item_id, delta):
         async def handler(e):
-            item = ts.get_item(item_id)
+            item = backend.get_item(item_id)
             if item is None:
                 return
             if delta < 0 and item["qty"] <= 1:
                 ask_delete_item(item_id)
                 return
-            ts.update_item_qty(item_id, item["qty"] + delta)
+            backend.update_item_qty(item_id, item["qty"] + delta)
             refresh_ui()
             await focus_search()
 
         return handler
 
     def refresh_ui():
-        ensure_ticket()
-        items = ts.list_items(current_ticket_id)
+        try:
+            ensure_ticket()
+            items = backend.list_items(current_ticket_id)
+        except SinConexion:
+            set_offline()
+            page.update()
+            return
+        except ApiError as exc:
+            if exc.status != 401:
+                raise
+            set_offline(str(exc))
+            page.update()
+            return
+        if backend.is_remote:
+            set_online()
         rows = []
         for item in items:
             item_id = item["id"]
@@ -648,33 +792,33 @@ def main(page: ft.Page, restore=None):
         total_lbl.value = fmt_money(total)
         subtotal_lbl.value = fmt_money(total)
         items_lbl.value = str(sum(int(i["qty"]) for i in items))
-        current = ts.get_ticket(current_ticket_id)
+        current = backend.get_ticket(current_ticket_id)
         ticket_title.value = f'Ticket actual · {(current or {}).get("name") or ""}'.rstrip(" ·")
-        cobrar_btn.disabled = not items
+        cobrar_btn.disabled = not items or not conn["online"]
         refresh_ticket_list()
         page.update()
 
     def ask_delete_item(item_id):
-        item = ts.get_item(item_id)
+        item = backend.get_item(item_id)
         if item is None:
             return
 
         def do_delete():
-            ts.remove_item(item_id)
+            backend.remove_item(item_id)
             refresh_ui()
 
         ask_confirm("Quitar línea", f'¿Quitar "{item["product_name"]}" del ticket?', do_delete)
 
     def ask_clear_ticket():
         ensure_ticket()
-        items = ts.list_items(current_ticket_id)
+        items = backend.list_items(current_ticket_id)
         if not items:
             show_message("El ticket ya está vacío.")
             return
 
         def do_clear():
-            for item in ts.list_items(current_ticket_id):
-                ts.remove_item(item["id"])
+            for item in backend.list_items(current_ticket_id):
+                backend.remove_item(item["id"])
             stock_bar.visible = False
             refresh_ui()
 
@@ -699,7 +843,13 @@ def main(page: ft.Page, restore=None):
     def refresh_grid():
         # Solo muestra coincidencias del texto escrito; vacio = sin grilla.
         q = (search_input.value or "").strip()
-        shown, total_matches = search_grid_products(q)
+        try:
+            shown, total_matches = search_grid_products(q)
+        except (SinConexion, ApiError) as exc:
+            if isinstance(exc, ApiError) and exc.status != 401:
+                raise
+            set_offline(str(exc) if isinstance(exc, ApiError) else None)
+            shown, total_matches = [], 0
 
         def card(p):
             stock = int(p.get("stock") or 0)
@@ -757,11 +907,12 @@ def main(page: ft.Page, restore=None):
         refresh_grid()
         page.update()
 
+    @guarded
     def add_product(product):
         ensure_ticket()
-        ts.add_item(current_ticket_id, product["id"], 1, product["sale_price"])
-        prod = ps.get_product(product["id"]) or product
-        remaining = low_stock_remaining(prod, ts.list_items(current_ticket_id))
+        backend.add_item(current_ticket_id, product["id"], 1, product["sale_price"])
+        prod = backend.get_product(product["id"]) or product
+        remaining = low_stock_remaining(prod, backend.list_items(current_ticket_id))
         if remaining is not None:
             stock_text.value = (
                 f'Stock bajo: "{prod["name"]}" quedaría con {remaining} '
@@ -777,6 +928,7 @@ def main(page: ft.Page, restore=None):
     productos_view = ProductosView(page, on_products_changed=refresh_grid)
 
     # ---------- Busqueda ----------
+    @guarded
     async def add_item_by_search(e):
         q = (search_input.value or "").strip()
         kind, result = find_product(q)
@@ -827,6 +979,7 @@ def main(page: ft.Page, restore=None):
     search_input.on_change = on_search_change
 
     # ---------- Cobro ----------
+    @guarded
     def after_charge():
         """Tras cobrar: reutiliza un ticket vacio si existe, si no crea uno."""
         nonlocal current_ticket_id
@@ -834,7 +987,7 @@ def main(page: ft.Page, restore=None):
         if empty is not None:
             current_ticket_id = empty
         else:
-            current_ticket_id = ts.create_ticket(new_ticket_name())
+            current_ticket_id = backend.create_ticket(new_ticket_name())
         stock_bar.visible = False
         refresh_ui()
 
@@ -851,7 +1004,7 @@ def main(page: ft.Page, restore=None):
         )
 
     def receipt_for(sale_id, received):
-        return bol.build_receipt(sale_id, received=received)
+        return backend.receipt(sale_id, received)
 
     async def print_sale(sale_id, received):
         _cfg, boleta_cfg, _smtp = bol.load_settings()
@@ -978,14 +1131,17 @@ def main(page: ft.Page, restore=None):
         open_dialog(dlg)
 
     def open_charge_dialog(e):
+        if backend.is_remote and not conn["online"]:
+            show_message("Sin conexión con la Caja 1. No se puede cobrar hasta que vuelva.")
+            return
         try:
             tid = ensure_ticket()
-            items = ts.list_items(tid)
+            items = backend.list_items(tid)
             total = items_total(items)
             if not items or total <= 0:
                 show_message("El ticket está vacío.")
                 return
-            warnings = ss.stock_warnings_for_ticket(tid)
+            warnings = backend.stock_warnings_for_ticket(tid)
             state = {"charging": False}
 
             metodo = ft.RadioGroup(
@@ -1075,9 +1231,20 @@ def main(page: ft.Page, restore=None):
                 confirmar_btn.disabled = True
                 page.update()
                 try:
-                    ts.set_pay_method(tid, method)
-                    sale_id, sale_warnings = ss.cobrar_ticket(tid)
-                except ValueError as exc:
+                    sale_id, sale_warnings = backend.cobrar(tid, method)
+                except SinConexion:
+                    # No se sabe si la Caja 1 llego a cobrar: se cierra el cobro,
+                    # se marca sin conexion y el ticket queda abierto. Al volver
+                    # la conexion la cajera revisa antes de cobrar de nuevo.
+                    close_dialog(dlg)
+                    set_offline()
+                    show_message(
+                        "Se perdió la conexión con la Caja 1 mientras se cobraba. "
+                        "Revisa en la Caja 1 si la venta quedó registrada antes de cobrar de nuevo."
+                    )
+                    page.update()
+                    return
+                except (ValueError, ApiError) as exc:
                     state["charging"] = False
                     update_charge_state()
                     show_message(str(exc))
@@ -1100,6 +1267,10 @@ def main(page: ft.Page, restore=None):
             ]
             update_charge_state()
             open_dialog(dlg)
+        except SinConexion:
+            set_offline()
+            show_message("Sin conexión con la Caja 1. No se puede cobrar hasta que vuelva.")
+            page.update()
         except Exception as exc:
             show_message(f"Error al cobrar: {exc}")
 
@@ -1172,6 +1343,7 @@ def main(page: ft.Page, restore=None):
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
+                conn_bar,
                 stock_bar,
                 ft.Column(
                     [
@@ -1278,6 +1450,11 @@ def main(page: ft.Page, restore=None):
         (nav_rep_btn, "reportes", "Reportes", ft.Icons.BAR_CHART),
         (nav_cfg_btn, "config", "Configuración", ft.Icons.SETTINGS_OUTLINED),
     )
+    # Caja cliente (Fase 5.1): solo POS y Configuracion. Productos y Reportes
+    # leen la base local, no la API: quedan ocultas hasta la Fase 5.2.
+    if backend.is_remote:
+        nav_prod_btn.visible = False
+        nav_rep_btn.visible = False
 
     def paint_tabs(active):
         for btn, name, label, icon in tabs:
@@ -1312,6 +1489,7 @@ def main(page: ft.Page, restore=None):
             "desde": reportes_view.in_desde.value,
             "hasta": reportes_view.in_hasta.value,
             "cfg_fields": config_view.snapshot(),
+            "backend": backend,
         }
         # Los dialogos abiertos se pierden (pertenecen a la interfaz vieja).
         page.overlay.clear()
@@ -1337,6 +1515,8 @@ def main(page: ft.Page, restore=None):
 
     def apply_view(name):
         """Muestra la vista `name` en el area central (sin foco)."""
+        if backend.is_remote and name in ("productos", "reportes"):
+            name = "pos"
         current_view["name"] = name
         paint_tabs(name)
         if name == "productos":
@@ -1416,6 +1596,7 @@ def main(page: ft.Page, restore=None):
                 nav_rep_btn,
                 nav_cfg_btn,
                 ft.Container(expand=True),
+                conn_badge,
             ],
             spacing=6,
         ),
@@ -1437,11 +1618,23 @@ def main(page: ft.Page, restore=None):
         )
     )
 
-    ensure_ticket()
+    # Si la Caja 1 esta apagada al abrir, la caja cliente abre igual y muestra
+    # "sin conexion" (no hay modo offline: espera y deja reintentar).
+    try:
+        ensure_ticket()
+    except SinConexion:
+        set_offline()
+    except ApiError as exc:
+        if exc.status != 401:
+            raise
+        set_offline(str(exc))
     search_input.value = restore.get("search", "")
     refresh_grid()
     refresh_ui()
-    productos_view.load_data()
+    if not backend.is_remote:
+        # Productos y Reportes leen la base local directo: en una caja cliente
+        # no se cargan (llegan por API en la Fase 5.2).
+        productos_view.load_data()
     if restore:
         last_receipt_btn.visible = bool(last_sale)
         if restore.get("desde") is not None:

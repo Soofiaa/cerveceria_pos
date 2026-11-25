@@ -2,3 +2,7 @@ flet==1.1.2
 # Comprobante de venta: PDF (fpdf2) e impresoras/DPAPI de Windows (pywin32).
 fpdf2==2.8.1
 pywin32==308
+# Multi-caja (Fase 5.1): la Caja 1 sirve la API con Flask y las cajas cliente la
+# llaman con requests. Flask solo se importa en modo "server".
+flask==3.1.3
+requests==2.34.2
