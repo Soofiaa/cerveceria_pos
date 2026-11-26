@@ -39,28 +39,24 @@ def stock_warnings_for_ticket(ticket_id: int) -> List[Dict[str, Any]]:
         return _stock_warnings_for_ticket(cur, ticket_id)
 
 
-def cobrar_ticket(ticket_id: int) -> Tuple[int, List[Dict[str, Any]]]:
+def cobrar_ticket(
+    ticket_id: int, 
+    pay_method: Optional[str] = None, 
+    expected_total: Optional[int] = None
+) -> Tuple[int, List[Dict[str, Any]]]:
     """
     Convierte un ticket abierto en una venta:
-    - Crea cabecera en sales (subtotal=SUM, total=subtotal, pay_method del ticket, status=pagada, created_at local)
+    - Valida opcionalmente total y método de pago.
+    - Crea cabecera en sales (subtotal=SUM, total=subtotal, pay_method, status=pagada, created_at local)
     - Crea sale_items con qty, unit_price, line_total y gain_per_unit
-    - Descuenta stock de cada producto (excepto 'Producto común'); se permite
-      que el stock quede negativo, no se bloquea la venta.
+    - Descuenta stock de cada producto (excepto 'Producto común')
     - Borra ticket e ítems abiertos
-    Devuelve (sale_id, stock_warnings), donde stock_warnings es la lista de
-    ítems que quedaron con stock negativo tras el cobro (ver
-    _stock_warnings_for_ticket). Se calcula ANTES de descontar stock, dentro
-    de la misma transacción, así que 'stock_resultante' coincide con el
-    valor final si el cobro se confirma.
     """
+    if pay_method and pay_method not in ["efectivo", "credito", "debito", "transferencia"]:
+        raise ValueError("Método de pago inválido.")
+
     with get_conn() as con:
         cur = con.cursor()
-
-        # Bloqueo de escritura ANTES de leer el ticket. Sin esto, dos cobros del
-        # mismo ticket (dos cajas) lo leian "abierto" a la vez y los dos vendian:
-        # dos ventas y el stock descontado dos veces. Con BEGIN IMMEDIATE el
-        # segundo espera (timeout de sqlite3) y, al entrar, ya no encuentra el
-        # ticket y falla con "Ticket no existe.".
         cur.execute("BEGIN IMMEDIATE")
 
         # Obtener ticket
@@ -71,9 +67,9 @@ def cobrar_ticket(ticket_id: int) -> Tuple[int, List[Dict[str, Any]]]:
         t = cur.fetchone()
         if not t:
             raise ValueError("Ticket no existe.")
-        _, pay_method, _ = t
+        _, ticket_pay_method, ticket_pending_total = t
 
-        # Ítems del ticket (incluyendo gain_per_unit)
+        # Ítems del ticket
         cur.execute("""
             SELECT i.product_id, i.qty, i.unit_price, i.gain_per_unit
             FROM open_ticket_items i
@@ -83,11 +79,7 @@ def cobrar_ticket(ticket_id: int) -> Tuple[int, List[Dict[str, Any]]]:
         if not items:
             raise ValueError("El ticket no tiene ítems.")
 
-        # Calculado ANTES de descontar stock, para que refleje el stock
-        # resultante real de este cobro (no bloquea la venta).
-        stock_warnings = _stock_warnings_for_ticket(cur, ticket_id)
-
-        # Calcular subtotal/total (sin descuentos)
+        # Recalcular subtotal
         cur.execute("""
             SELECT IFNULL(SUM(qty * unit_price), 0)
             FROM open_ticket_items
@@ -96,20 +88,30 @@ def cobrar_ticket(ticket_id: int) -> Tuple[int, List[Dict[str, Any]]]:
         subtotal = cur.fetchone()[0] or 0
         total = subtotal
 
-        # Insertar venta (incluye created_at en hora local)
+        if expected_total is not None and subtotal != expected_total:
+            raise ValueError("El ticket cambió, revisa el total.")
+
+        # Usar método de pago provisto o el del ticket
+        final_pay_method = pay_method if pay_method is not None else ticket_pay_method
+        if not final_pay_method:
+             final_pay_method = "efectivo"
+
+        # Insertar venta
         created_at = now_local_str()
         cur.execute("""
             INSERT INTO sales (subtotal, total, pay_method, status, created_at)
             VALUES (?, ?, ?, 'pagada', ?)
-        """, (subtotal, total, (pay_method or "efectivo"), created_at))
+        """, (subtotal, total, final_pay_method, created_at))
         sale_id = cur.lastrowid
 
-        # Producto común: no descuenta inventario (no representa un producto real del catálogo)
+        # Producto común
         cur.execute("SELECT id FROM products WHERE name='Producto común' LIMIT 1")
         common_row = cur.fetchone()
         common_product_id = common_row[0] if common_row else None
 
-        # Insertar detalle (incluyendo gain_per_unit) y descontar stock
+        # Insertar detalle y descontar stock
+        stock_warnings = _stock_warnings_for_ticket(cur, ticket_id)
+
         for (product_id, qty, unit_price, gain_per_unit) in items:
             qty = int(qty)
             unit_price = int(unit_price)
@@ -127,9 +129,7 @@ def cobrar_ticket(ticket_id: int) -> Tuple[int, List[Dict[str, Any]]]:
                     (qty, product_id),
                 )
 
-        # Borrar ticket abierto (ON DELETE CASCADE borra líneas de open_ticket_items)
         cur.execute("DELETE FROM open_tickets WHERE id=?", (ticket_id,))
-
         con.commit()
         return sale_id, stock_warnings
 

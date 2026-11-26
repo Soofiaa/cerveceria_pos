@@ -245,6 +245,21 @@ def create_app():
         ts.update_item_qty(item_id, qty)
         return jsonify({"items": ts.list_items(item["ticket_id"]), "ticket": ts.get_ticket(item["ticket_id"])})
 
+    @app.post("/api/items/<int:item_id>/adjust")
+    def item_adjust(item_id):
+        body = _json_body()
+        try:
+            delta = _int(body.get("delta"), "delta")
+        except ValueError as exc:
+            return _err(str(exc), 400)
+        if delta == 0:
+            return _err("delta debe ser distinto de 0.", 400)
+        item = ts.get_item(item_id)
+        if item is None:
+            return _err("Linea no existe.", 404)
+        new_qty = ts.adjust_item_qty(item_id, delta)
+        return jsonify({"new_qty": new_qty, "items": ts.list_items(item["ticket_id"]), "ticket": ts.get_ticket(item["ticket_id"])})
+
     @app.delete("/api/items/<int:item_id>")
     def item_delete(item_id):
         item = ts.get_item(item_id)
@@ -262,15 +277,21 @@ def create_app():
 
     @app.post("/api/tickets/<int:ticket_id>/charge")
     def charge(ticket_id):
-        method = _json_body().get("pay_method")
+        body = _json_body()
+        method = body.get("pay_method")
         if method not in PAY_METHODS:
             return _err("Medio de pago no valido.", 400)
         if ts.get_ticket(ticket_id) is None:
             return _err("Ticket no existe (puede haberlo cobrado otra caja).", 404)
-        ts.set_pay_method(ticket_id, method)
+        expected_total = body.get("expected_total")
+        if expected_total is not None:
+            try:
+                expected_total = _int(expected_total, "expected_total", 0)
+            except ValueError as exc:
+                return _err(str(exc), 400)
         try:
-            sale_id, warnings = ss.cobrar_ticket(ticket_id)
-        except ValueError as exc:  # ticket vacio o ya cobrado
+            sale_id, warnings = ss.cobrar_ticket(ticket_id, pay_method=method, expected_total=expected_total)
+        except ValueError as exc:  # ticket vacio, total no calza, metodo invalido
             return _err(str(exc), 409)
         return jsonify({"sale_id": sale_id, "warnings": warnings}), 201
 

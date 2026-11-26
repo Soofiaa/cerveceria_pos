@@ -133,6 +133,14 @@ class ApiClient:
         """Misma firma que core.ticket_service.add_item. unit_price se ignora: manda el servidor."""
         return self.add_product(ticket_id, product_id, qty)["items"][-1]["id"]
 
+    def adjust_item_qty(self, item_id, delta):
+        try:
+            return self._request("POST", f"/api/items/{int(item_id)}/adjust", json={"delta": int(delta)})["new_qty"]
+        except ApiError as exc:
+            if exc.status == 404:
+                return None
+            raise
+
     def update_item_qty(self, item_id, new_qty):
         try:
             self._request("PUT", f"/api/items/{int(item_id)}", json={"qty": int(new_qty)})
@@ -151,9 +159,12 @@ class ApiClient:
     def stock_warnings_for_ticket(self, ticket_id):
         return self._request("GET", f"/api/tickets/{int(ticket_id)}/stock_warnings")
 
-    def cobrar(self, ticket_id, method):
+    def cobrar(self, ticket_id, method, expected_total=None):
         """Cobra en la Caja 1. Devuelve (sale_id, warnings). Lanza ApiError si la rechaza."""
-        body = self._request("POST", f"/api/tickets/{int(ticket_id)}/charge", json={"pay_method": method})
+        payload = {"pay_method": method}
+        if expected_total is not None:
+            payload["expected_total"] = expected_total
+        body = self._request("POST", f"/api/tickets/{int(ticket_id)}/charge", json=payload)
         return body["sale_id"], body["warnings"]
 
     def receipt(self, sale_id):

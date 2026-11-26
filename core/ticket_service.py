@@ -177,6 +177,7 @@ def add_item(ticket_id: int, product_id: int, qty: int, unit_price: int) -> int:
 
     with get_conn() as con:
         cur = con.cursor()
+        cur.execute("BEGIN IMMEDIATE")
         # ¿Ya existe línea de ese producto y precio?
         cur.execute("""
             SELECT id, qty
@@ -256,6 +257,40 @@ def remove_item(item_id: int) -> None:
         cur.execute("DELETE FROM open_ticket_items WHERE id=?", (item_id,))
         _recalc_ticket_totals(con, ticket_id)
         con.commit()
+
+def adjust_item_qty(item_id: int, delta: int) -> Optional[int]:
+    """
+    Ajusta la cantidad de una línea.
+    Usa BEGIN IMMEDIATE para atomicidad.
+    Si la cantidad resultante es <= 0, elimina la línea.
+    Recalcula totales.
+    """
+    if delta == 0:
+        raise ValueError("El delta debe ser distinto de 0.")
+
+    with get_conn() as con:
+        cur = con.cursor()
+        cur.execute("BEGIN IMMEDIATE")
+        
+        # Obtener ticket_id y cantidad actual
+        cur.execute("SELECT ticket_id, qty FROM open_ticket_items WHERE id=?", (item_id,))
+        r = cur.fetchone()
+        if not r:
+            return None
+        
+        ticket_id, current_qty = r
+        new_qty = current_qty + delta
+        
+        if new_qty <= 0:
+            cur.execute("DELETE FROM open_ticket_items WHERE id=?", (item_id,))
+            final_qty = 0
+        else:
+            cur.execute("UPDATE open_ticket_items SET qty=? WHERE id=?", (new_qty, item_id))
+            final_qty = new_qty
+            
+        _recalc_ticket_totals(con, ticket_id)
+        con.commit()
+        return final_qty
 
 def update_item_qty(item_id: int, new_qty: int) -> None:
     """Actualiza la cantidad de una línea. Si new_qty <= 0, elimina la línea."""

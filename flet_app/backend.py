@@ -42,12 +42,12 @@ class LocalBackend:
     get_item = staticmethod(ts.get_item)
     add_item = staticmethod(ts.add_item)
     update_item_qty = staticmethod(ts.update_item_qty)
+    adjust_item_qty = staticmethod(ts.adjust_item_qty)
     remove_item = staticmethod(ts.remove_item)
     stock_warnings_for_ticket = staticmethod(ss.stock_warnings_for_ticket)
 
-    def cobrar(self, ticket_id, method):
-        ts.set_pay_method(ticket_id, method)
-        return ss.cobrar_ticket(ticket_id)
+    def cobrar(self, ticket_id, method, expected_total=None):
+        return ss.cobrar_ticket(ticket_id, pay_method=method, expected_total=expected_total)
 
     def receipt(self, sale_id, received=None):
         return bol.build_receipt(sale_id, received=received)

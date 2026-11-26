@@ -661,8 +661,11 @@ def main(page: ft.Page, restore=None):
         nonlocal current_ticket_id
         if current_ticket_id is not None and backend.get_ticket(current_ticket_id) is not None:
             return current_ticket_id
-        # Si ya hay tickets abiertos se sigue con el mas reciente en vez de
-        # crear uno vacio nuevo en cada lanzamiento.
+        # En modo cliente nunca se adopta un ticket abierto del servidor:
+        # si no hay ticket en memoria, se crea uno nuevo.
+        if backend.is_remote:
+            current_ticket_id = backend.create_ticket(new_ticket_name())
+            return current_ticket_id
         open_tickets = backend.list_open_tickets()
         if open_tickets:
             current_ticket_id = open_tickets[0]["id"]
@@ -703,7 +706,7 @@ def main(page: ft.Page, restore=None):
             if delta < 0 and item["qty"] <= 1:
                 ask_delete_item(item_id)
                 return
-            backend.update_item_qty(item_id, item["qty"] + delta)
+            backend.adjust_item_qty(item_id, delta)
             refresh_ui()
             await focus_search()
 
@@ -981,13 +984,9 @@ def main(page: ft.Page, restore=None):
     # ---------- Cobro ----------
     @guarded
     def after_charge():
-        """Tras cobrar: reutiliza un ticket vacio si existe, si no crea uno."""
+        """Tras cobrar: siempre crea un ticket nuevo, nunca reutiliza uno vacio."""
         nonlocal current_ticket_id
-        empty = find_empty_ticket()
-        if empty is not None:
-            current_ticket_id = empty
-        else:
-            current_ticket_id = backend.create_ticket(new_ticket_name())
+        current_ticket_id = backend.create_ticket(new_ticket_name())
         stock_bar.visible = False
         refresh_ui()
 
@@ -1269,7 +1268,9 @@ def main(page: ft.Page, restore=None):
                 confirmar_btn.disabled = True
                 page.update()
                 try:
-                    sale_id, sale_warnings = backend.cobrar(tid, method)
+                    # expected_total es el total mostrado al abrir el dialogo;
+                    # si el ticket cambio, cobrar_ticket lanza ValueError.
+                    sale_id, sale_warnings = backend.cobrar(tid, method, expected_total=total)
                 except SinConexion:
                     # No se sabe si la Caja 1 llego a cobrar: se cierra el cobro,
                     # se marca sin conexion y el ticket queda abierto. Al volver
@@ -1286,6 +1287,9 @@ def main(page: ft.Page, restore=None):
                     state["charging"] = False
                     update_charge_state()
                     show_message(str(exc))
+                    # Si el total no calza, refrescar para que la cajera vea
+                    # el total nuevo antes de reintentar.
+                    refresh_ui()
                     return
                 close_dialog(dlg)
                 after_charge()
