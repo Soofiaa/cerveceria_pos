@@ -1019,6 +1019,38 @@ def main(page: ft.Page, restore=None):
             return
         show_message(f"Comprobante {sale_id} enviado a imprimir.")
 
+    # FilePicker es un Service: al construirlo se registra solo en la pagina
+    # (no va en page.overlay). save_file es async: quien lo llama debe ser
+    # async def y hacer await.
+    receipt_picker = ft.FilePicker()
+
+    async def save_sale_pdf(sale_id, received):
+        # Primero la ruta: si la persona cancela no se genera ningun PDF.
+        try:
+            path = await receipt_picker.save_file(
+                dialog_title="Guardar comprobante",
+                file_name=f"comprobante_{sale_id}.pdf",
+                file_type=ft.FilePickerFileType.CUSTOM,
+                allowed_extensions=["pdf"],
+            )
+        except Exception as exc:
+            show_message(f"No se pudo abrir el diálogo para guardar: {exc}")
+            return
+        if not path:
+            return
+        _cfg, boleta_cfg, _smtp = bol.load_settings()
+        try:
+            # Mismos datos que print_sale: el PDF y el impreso salen iguales.
+            data = receipt_for(sale_id, received)
+            saved = bol.build_pdf(data, path=path, paper_mm=int(boleta_cfg.get("paper_mm") or 80))
+        except Exception as exc:
+            show_message(f"No se pudo guardar el comprobante: {exc}")
+            return
+        if not os.path.isfile(saved):
+            show_message(f"No se pudo guardar el comprobante en {path}.")
+            return
+        show_message(f"Comprobante guardado en {saved}")
+
     def ask_email_sale(sale_id, received):
         _cfg, _boleta, smtp_cfg = bol.load_settings()
         to_input = _field("Correo del cliente", autofocus=True, keyboard_type=ft.KeyboardType.EMAIL)
@@ -1108,12 +1140,18 @@ def main(page: ft.Page, restore=None):
             close_dialog(dlg)
             await print_sale(sale_id, received)
 
+        async def do_save(e):
+            close_dialog(dlg)
+            await save_sale_pdf(sale_id, received)
+
         def do_email(e):
             close_dialog(dlg)
             ask_email_sale(sale_id, received)
 
         actions = [
-            ft.TextButton("Imprimir comprobante", icon=ft.Icons.PRINT, on_click=do_print,
+            ft.TextButton("Guardar comprobante", icon=ft.Icons.SAVE_ALT, on_click=do_save,
+                          style=ft.ButtonStyle(color=PRIMARY)),
+            ft.TextButton("Imprimir", icon=ft.Icons.PRINT, on_click=do_print,
                           style=ft.ButtonStyle(color=PRIMARY)),
         ]
         # El correo es opcional: solo aparece si se activo en Configuracion.

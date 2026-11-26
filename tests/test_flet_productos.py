@@ -367,7 +367,7 @@ def test_pos_grilla_solo_aparece_al_buscar(temp_db):
     assert names == ["Cerveza Negra"]
 
 
-def _cobrar_una_venta(tmp_path, monkeypatch, email_enabled):
+def _cobrar_una_venta(tmp_path, monkeypatch, email_enabled, with_page=False):
     """Escanea, cobra con 5.000 y devuelve (aviso de venta, boton Ultimo)."""
     from core import config as core_config
     from flet_app import boletas as bol
@@ -398,6 +398,8 @@ def _cobrar_una_venta(tmp_path, monkeypatch, email_enabled):
     recibido.on_change(None)
     asyncio.run(recibido.on_submit(None))
 
+    if with_page:
+        return _open_dialogs(page)[-1], ultimo, page
     return _open_dialogs(page)[-1], ultimo
 
 
@@ -405,14 +407,123 @@ def test_cobro_ofrece_imprimir_comprobante_sin_correo_por_defecto(temp_db, tmp_p
     done, ultimo = _cobrar_una_venta(tmp_path, monkeypatch, email_enabled=False)
     assert done.title.value == "Venta cobrada"
     assert "Vuelto: $3.500" in done.content.value
-    assert [b.content for b in done.actions] == ["Imprimir comprobante", "Aceptar"]
+    assert [b.content for b in done.actions] == ["Guardar comprobante", "Imprimir", "Aceptar"]
     assert ultimo.visible is True
 
 
 def test_cobro_ofrece_correo_si_esta_activado(temp_db, tmp_path, monkeypatch):
     done, _ultimo = _cobrar_una_venta(tmp_path, monkeypatch, email_enabled=True)
     assert [b.content for b in done.actions] == [
-        "Imprimir comprobante",
+        "Guardar comprobante",
+        "Imprimir",
         "Enviar por correo",
         "Aceptar",
     ]
+
+
+def _avisos(page):
+    return [c.content.value for c in _open_dialogs(page)]
+
+
+def _cobrar_con_pagina(tmp_path, monkeypatch):
+    """Como _cobrar_una_venta, pero devuelve (aviso de venta, pagina)."""
+    done, _ultimo, page = _cobrar_una_venta(tmp_path, monkeypatch, email_enabled=False, with_page=True)
+    return done, page
+
+
+def test_venta_cobrada_no_tiene_boton_unico_imprimir_comprobante(temp_db, tmp_path, monkeypatch):
+    done, _page = _cobrar_con_pagina(tmp_path, monkeypatch)
+    labels = [b.content for b in done.actions]
+    assert "Imprimir comprobante" not in labels
+    assert "Guardar comprobante" in labels and "Imprimir" in labels
+    assert inspect.iscoroutinefunction(_dialog_button(done, "Guardar comprobante").on_click)
+    assert inspect.iscoroutinefunction(_dialog_button(done, "Imprimir").on_click)
+
+
+def test_guardar_comprobante_en_ruta_elegida(temp_db, tmp_path, monkeypatch):
+    from flet_app import boletas as bol
+
+    done, page = _cobrar_con_pagina(tmp_path, monkeypatch)
+    destino = str(tmp_path / "otra carpeta" / "mi_comprobante.pdf")
+    (tmp_path / "otra carpeta").mkdir()
+    pedido = {}
+
+    async def fake_save(self, **kwargs):
+        pedido.update(kwargs)
+        return destino
+
+    calls = []
+    real_build = bol.build_pdf
+    monkeypatch.setattr(ft.FilePicker, "save_file", fake_save)
+    monkeypatch.setattr(bol, "build_pdf", lambda data, **kw: calls.append((data, kw)) or real_build(data, **kw))
+    _click(_dialog_button(done, "Guardar comprobante"))
+
+    assert pedido["file_name"].startswith("comprobante_") and pedido["file_name"].endswith(".pdf")
+    assert len(calls) == 1 and calls[0][1]["path"] == destino
+    assert (tmp_path / "otra carpeta" / "mi_comprobante.pdf").read_bytes().startswith(b"%PDF")
+    assert f"Comprobante guardado en {destino}" in _avisos(page)
+
+
+def test_guardar_comprobante_cancelado_no_genera_pdf(temp_db, tmp_path, monkeypatch):
+    from flet_app import boletas as bol
+
+    done, page = _cobrar_con_pagina(tmp_path, monkeypatch)
+
+    async def fake_save(self, **kwargs):
+        return None
+
+    calls = []
+    monkeypatch.setattr(ft.FilePicker, "save_file", fake_save)
+    monkeypatch.setattr(bol, "build_pdf", lambda *a, **kw: calls.append(1))
+    _click(_dialog_button(done, "Guardar comprobante"))
+
+    assert calls == []
+    assert not any("guardado" in t for t in _avisos(page))
+
+
+def test_imprimir_con_exito_avisa_enviado(temp_db, tmp_path, monkeypatch):
+    from flet_app import boletas as bol
+
+    done, page = _cobrar_con_pagina(tmp_path, monkeypatch)
+    impresos = []
+    monkeypatch.setattr(bol, "print_receipt", lambda data, cfg: impresos.append(data))
+    _click(_dialog_button(done, "Imprimir"))
+
+    assert len(impresos) == 1 and impresos[0]["received"] == 5000
+    assert any("enviado a imprimir." in t for t in _avisos(page))
+
+
+@pytest.mark.parametrize("error", ["boleta", "otro"])
+def test_imprimir_con_error_no_avisa_exito(temp_db, tmp_path, monkeypatch, error):
+    from flet_app import boletas as bol
+
+    done, page = _cobrar_con_pagina(tmp_path, monkeypatch)
+
+    def falla(data, cfg):
+        raise bol.BoletaError("sin papel") if error == "boleta" else OSError("cola caída")
+
+    monkeypatch.setattr(bol, "print_receipt", falla)
+    _click(_dialog_button(done, "Imprimir"))
+
+    avisos = _avisos(page)
+    assert any(t.startswith("No se pudo imprimir:") for t in avisos)
+    assert not any("enviado a imprimir" in t for t in avisos)
+
+
+def test_pdf_guardado_e_impreso_usan_los_mismos_datos(temp_db, tmp_path, monkeypatch):
+    from flet_app import boletas as bol
+
+    done, _page = _cobrar_con_pagina(tmp_path, monkeypatch)
+    vistos = []
+
+    async def fake_save(self, **kwargs):
+        return str(tmp_path / "c.pdf")
+
+    monkeypatch.setattr(ft.FilePicker, "save_file", fake_save)
+    monkeypatch.setattr(bol, "print_receipt", lambda data, cfg: vistos.append(data))
+    real_build = bol.build_pdf
+    monkeypatch.setattr(bol, "build_pdf", lambda data, **kw: vistos.append(data) or real_build(data, **kw))
+    _click(_dialog_button(done, "Guardar comprobante"))
+    _click(_dialog_button(done, "Imprimir"))
+
+    assert len(vistos) == 2 and vistos[0] == vistos[1]
