@@ -11,7 +11,10 @@ de confianza). El servidor no se empaqueta en esta fase.
 """
 
 import hmac
+import logging
+import os
 import time
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, request
 
@@ -25,6 +28,48 @@ from flet_app.multicaja import ensure_api_token
 API_VERSION = 1
 PAY_METHODS = ("efectivo", "credito", "debito", "transferencia")
 _STARTED = time.time()  # para uptime_s en /api/health
+
+_LOG_SEGURIDAD = None
+_LOG_PATH = os.path.join(core_config.USER_DATA_DIR, "api_seguridad.log")
+
+
+def _logger_seguridad():
+    """Logger de intentos de autenticacion fallida con archivo rotativo.
+
+    Se crea una sola vez. Si no se puede abrir el archivo (disco, permisos),
+    devuelve None y la API sigue funcionando igual: el registro nunca puede
+    botar una request.
+    """
+    global _LOG_SEGURIDAD
+    if _LOG_SEGURIDAD is not None:
+        return _LOG_SEGURIDAD
+    logger = logging.getLogger("api_seguridad")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    try:
+        handler = RotatingFileHandler(
+            _LOG_PATH, maxBytes=512 * 1024, backupCount=2, encoding="utf-8",
+        )
+        handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+        logger.addHandler(handler)
+    except Exception:
+        logger = None
+    _LOG_SEGURIDAD = logger
+    return logger
+
+
+def _registrar_intento_fallido(req):
+    """Anota IP, metodo y ruta de un intento de autenticacion fallido.
+
+    Nunca registra el valor de la clave ni ningun header. Si el registro
+    falla, se traga la error y la request sigue su curso.
+    """
+    try:
+        logger = _logger_seguridad()
+        if logger is not None:
+            logger.info("%s %s %s", req.remote_addr, req.method, req.path)
+    except Exception:
+        pass
 
 
 def _err(message, status):
@@ -61,6 +106,7 @@ def create_app():
         token = str(core_config.load_config().get("api_token") or "").strip()
         sent = request.headers.get("X-Caja-Token", "")
         if not token or not hmac.compare_digest(sent.encode("utf-8"), token.encode("utf-8")):
+            _registrar_intento_fallido(request)
             return _err("Clave de la Caja 1 incorrecta o ausente.", 401)
         return None
 

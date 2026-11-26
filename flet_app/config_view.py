@@ -145,12 +145,16 @@ class ConfigView(ft.Column):
         self.in_caja_number = self._field("Número de caja", str(caja["caja_number"]), width=140)
         self.in_server_url = self._field("Dirección de la Caja 1", cfg.get("server_url") or "")
         # Caja adicional: pega aqui la clave que muestra la Caja 1.
-        self.in_api_token = self._field("Clave de la Caja 1", cfg.get("api_token") or "")
+        self.in_api_token = ft.TextField(
+            label="Clave de la Caja 1", value=cfg.get("api_token") or "", width=400,
+            password=True, can_reveal_password=True, color=self.colors["text"],
+        )
         self.caja_server_box = ft.Column([self.in_server_url, self.in_api_token], tight=True)
-        # Caja 1: muestra la clave generada para copiarla en las cajas adicionales.
+        # Caja 1: muestra la clave enmascarada; el boton copia la completa.
+        self._token_completo = str(cfg.get("api_token") or "")
         self.txt_token = ft.TextField(
             label="Clave de esta Caja 1 (cópiala en las cajas adicionales)",
-            value=str(cfg.get("api_token") or ""),
+            value=self._mascarar_token(self._token_completo),
             read_only=True, width=340, color=colors["text"],
             hint_text="Se genera al iniciar la Caja 1",
         )
@@ -212,6 +216,14 @@ class ConfigView(ft.Column):
     def _field(self, label, value, width=400):
         return ft.TextField(label=label, value=value, width=width, color=self.colors["text"])
 
+    @staticmethod
+    def _mascarar_token(token):
+        """Muestra la clave enmascarada: puntos y solo los ultimos 4 caracteres."""
+        token = str(token or "")
+        if len(token) <= 4:
+            return "•" * len(token)
+        return "•" * (len(token) - 4) + token[-4:]
+
     # ---------- Tema: se aplica al instante ----------
     def _paint_theme_buttons(self):
         c = self.colors
@@ -247,7 +259,7 @@ class ConfigView(ft.Column):
             self._page.update()
 
     async def _copy_token(self, e=None):
-        token = self.txt_token.value or ""
+        token = self._token_completo or ""
         if not token:
             self.msg.value = "Aún no hay clave: se genera al iniciar la Caja 1."
             self.msg.color = self.colors["danger"]

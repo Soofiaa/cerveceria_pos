@@ -567,7 +567,8 @@ def test_la_caja_1_genera_la_clave_al_arrancar_y_queda_en_config(temp_db, tmp_pa
     assert len(token) >= 20
     real.main(page)
     view = _config_view(page)
-    assert view.txt_token.value == token
+    assert token not in view.txt_token.value
+    assert view.txt_token.value.endswith(token[-4:])
     assert view.txt_token.read_only is True
     assert view.caja_token_box.visible is True            # se ve en la Caja 1
     assert view.caja_server_box.visible is False
