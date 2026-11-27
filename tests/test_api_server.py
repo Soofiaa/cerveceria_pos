@@ -321,13 +321,13 @@ def test_el_arranque_del_servidor_genera_y_guarda_una_clave_si_falta(temp_db, tm
     assert "api_token" not in json.loads(cfg_path.read_text(encoding="utf-8"))
 
     servidas = []
-    monkeypatch.setattr(api_server.Flask, "run", lambda self, **k: servidas.append(k))
+    monkeypatch.setattr(api_server, "run_simple", lambda host, port, app, **k: servidas.append((host, port, k)))
     api_server.run(port=8780, bootstrap=False)
 
     guardado = json.loads(cfg_path.read_text(encoding="utf-8"))
     assert len(guardado["api_token"]) >= 20                              # aleatorio y no trivial
     assert guardado["business_name"] == "Mi Local"                       # no pisa el resto
-    assert servidas and servidas[0]["host"] == "0.0.0.0"
+    assert servidas and servidas[0][0] == "0.0.0.0" and servidas[0][1] == 8780
     # y con esa clave la API responde; sin ella, 401
     c = create_app().test_client()
     assert c.get("/api/products").status_code == 401
@@ -341,7 +341,7 @@ def test_el_arranque_no_cambia_una_clave_que_ya_existe(temp_db, tmp_path, monkey
     cfg_path = tmp_path / "config.json"
     monkeypatch.setattr(core_config, "CONFIG_PATH", str(cfg_path))
     core_config.save_config(dict(core_config.DEFAULT_CONFIG, api_token="la-que-puso-el-dueno"))
-    monkeypatch.setattr(api_server.Flask, "run", lambda self, **k: None)
+    monkeypatch.setattr(api_server, "run_simple", lambda *a, **k: None)
     api_server.run(port=8780, bootstrap=False)
     api_server.run(port=8780, bootstrap=False)                           # reiniciar la app
     assert json.loads(cfg_path.read_text(encoding="utf-8"))["api_token"] == "la-que-puso-el-dueno"
@@ -354,7 +354,7 @@ def test_dos_arranques_sin_clave_dejan_una_sola_y_estable(temp_db, tmp_path, mon
     cfg_path = tmp_path / "config.json"
     monkeypatch.setattr(core_config, "CONFIG_PATH", str(cfg_path))
     core_config.save_config(dict(core_config.DEFAULT_CONFIG))
-    monkeypatch.setattr(api_server.Flask, "run", lambda self, **k: None)
+    monkeypatch.setattr(api_server, "run_simple", lambda *a, **k: None)
     api_server.run(port=8780, bootstrap=False)
     primera = json.loads(cfg_path.read_text(encoding="utf-8"))["api_token"]
     api_server.run(port=8780, bootstrap=False)
