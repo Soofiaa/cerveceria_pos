@@ -235,14 +235,6 @@ def migrate_open_ticket_items_add_display_name_if_missing():
         con.execute("ALTER TABLE open_ticket_items ADD COLUMN display_name TEXT;")
         con.commit()
 
-def migrate_sale_items_add_display_name_if_missing():
-    """Añade la columna display_name a sale_items si no existe."""
-    with get_conn() as con:
-        if _column_exists(con, "sale_items", "display_name"):
-            return
-        con.execute("ALTER TABLE sale_items ADD COLUMN display_name TEXT;")
-        con.commit()
-
 
 def _ensure_sales_created_at_trigger_and_index(con):
     cur = con.cursor()
