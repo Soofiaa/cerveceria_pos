@@ -361,6 +361,11 @@ def main(page: ft.Page, restore=None):
         page.window.height = 720
         page.window.min_width = 1000
         page.window.min_height = 650
+        # Icono de la ventana (assets/icon.ico). En el paquete de `flet build`
+        # el icono del ejecutable sale de assets/icon.png automaticamente.
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.ico")
+        if os.path.exists(icon_path):
+            page.window.icon = icon_path
     backend.start()
     start_api_server_if_needed()
 

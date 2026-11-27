@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mi POS">
+  <rect width="100" height="100" rx="22" fill="#6c3483"/>
+  <g transform="translate(2 5)">
+    <path d="M24 66 V42 M24 51 A9 9 0 0 1 42 51 V66 M42 51 A9 9 0 0 1 60 51 V66 M72 66 V42" fill="none" stroke="#ffffff" stroke-width="8"/>
+    <circle cx="72" cy="29" r="7.5" fill="#f2a72a"/>
+    <circle cx="72" cy="29" r="3.6" fill="none" stroke="#c26a00" stroke-width="1.6"/>
+  </g>
+</svg>

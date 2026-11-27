@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon_256.png" width="128" alt="Logo de Mi POS">
+</p>
+
 # Mi POS
 
 Mi POS nació como un punto de venta para una cervecería artesanal y se amplió a un POS genérico para cualquier negocio. Sistema de punto de venta (POS) de escritorio genérico, desarrollado en Python con PySide6 (Qt) y SQLite. Gestiona ventas, tickets abiertos, productos, control de stock y reportes de caja diaria.
