@@ -1,8 +1,9 @@
 # main.py
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtGui import QColor, QFont, QIcon, QPalette
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from core import db_manager, config
@@ -78,6 +79,13 @@ def main() -> None:
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+
+    # Icono de la app. Con PyInstaller los datos viven en sys._MEIPASS
+    # (empaquetar con: --icon assets/icon.ico --add-data "assets;assets").
+    base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    icon_path = base_dir / "assets" / "icon.ico"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     font = QFont("Inter", 11)
     font.setHintingPreference(QFont.PreferFullHinting)
