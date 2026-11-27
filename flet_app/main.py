@@ -899,7 +899,11 @@ def main(page: ft.Page, restore=None):
         # Con pocos resultados basta una fila; si no, dos filas con scroll.
         grid_box.height = 82 if len(shown) <= 3 else 170
         grid_empty.visible = bool(q) and total_matches == 0
-        grid_empty.value = f'Sin resultados para "{q}".'
+        # Sin red la busqueda falla y no hay coincidencias: no decir "sin resultados".
+        if backend.is_remote and not conn["online"]:
+            grid_empty.value = "Sin conexión con la Caja 1."
+        else:
+            grid_empty.value = f'Sin resultados para "{q}".'
         grid_info.visible = total_matches > GRID_LIMIT
         grid_info.value = (
             f"Mostrando {GRID_LIMIT} de {total_matches} coincidencias. "
