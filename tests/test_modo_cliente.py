@@ -511,7 +511,7 @@ def test_guardar_en_modo_server_no_borra_una_direccion_anterior(temp_db, tmp_pat
 def test_cliente_muestra_solo_pos_y_configuracion(cliente):
     page = FakePage()
     pos_main.main(page)
-    assert _tab(page, "Productos").visible is False and _tab(page, "Reportes").visible is False
+    assert _tab(page, "Productos").visible is False and _tab(page, "Reportes").visible is not False
     assert _tab(page, "POS").visible is not False and _tab(page, "Configuración").visible is not False
     # aunque se fuerce, no se carga una vista que leeria la base local
     asyncio.run(_tab(page, "Productos").on_click(None))

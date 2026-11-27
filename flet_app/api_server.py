@@ -14,6 +14,7 @@ import hmac
 import logging
 import os
 import time
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, request
@@ -21,6 +22,7 @@ from flask import Flask, jsonify, request
 from core import config as core_config
 from core import db_manager
 from core import product_service as ps
+from core import report_service as rs
 from core import sales_service as ss
 from core import ticket_service as ts
 from flet_app.multicaja import ensure_api_token
@@ -306,6 +308,59 @@ def create_app():
         except bol.BoletaError:
             return _err("Venta no existe.", 404)
         return jsonify(data)
+
+    # ---------- Reportes ----------
+    def _parse_date_param(val, name):
+        if not val:
+            raise ValueError(f"El parámetro {name} es obligatorio (AAAA-MM-DD).")
+        try:
+            # strptime acepta "2026-1-5": el largo fijo exige AAAA-MM-DD estricto.
+            if len(val) != 10:
+                raise ValueError
+            datetime.strptime(val, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError(f"El parámetro {name} debe tener formato AAAA-MM-DD.") from None
+        return val
+
+    def _validate_range_args():
+        d1_raw = request.args.get("from")
+        d2_raw = request.args.get("to")
+        try:
+            d1 = _parse_date_param(d1_raw, "from")
+            d2 = _parse_date_param(d2_raw, "to")
+        except ValueError as exc:
+            return None, None, str(exc)
+        if d1 > d2:
+            return None, None, "La fecha 'from' es posterior a 'to'."
+        return d1, d2, None
+
+    @app.get("/api/reports/summary")
+    def reports_summary():
+        d1, d2, err = _validate_range_args()
+        if err:
+            return _err(err, 400)
+        return jsonify(rs.summary(d1, d2))
+
+    @app.get("/api/reports/sales")
+    def reports_sales():
+        d1, d2, err = _validate_range_args()
+        if err:
+            return _err(err, 400)
+        return jsonify(rs.list_sales(d1, d2))
+
+    @app.get("/api/reports/top-products")
+    def reports_top_products():
+        d1, d2, err = _validate_range_args()
+        if err:
+            return _err(err, 400)
+        limit_raw = request.args.get("limit", "10")
+        try:
+            lim = int(limit_raw)
+        except (TypeError, ValueError):
+            return _err("limit debe ser un número entero.", 400)
+        if not (1 <= lim <= 50):
+            return _err("limit debe estar entre 1 y 50.", 400)
+        return jsonify(rs.top_products(d1, d2, limit=lim))
 
     return app
 

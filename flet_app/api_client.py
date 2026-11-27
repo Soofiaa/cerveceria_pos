@@ -170,3 +170,13 @@ class ApiClient:
     def receipt(self, sale_id):
         """Datos del comprobante tal como los arma el servidor (se imprime en esta caja)."""
         return self._request("GET", f"/api/sales/{int(sale_id)}/receipt")
+
+    # ---------- reportes ----------
+    def report_summary(self, date_from, date_to):
+        return self._request("GET", "/api/reports/summary", params={"from": date_from, "to": date_to})
+
+    def report_sales(self, date_from, date_to):
+        return self._request("GET", "/api/reports/sales", params={"from": date_from, "to": date_to})
+
+    def report_top_products(self, date_from, date_to, limit=10):
+        return self._request("GET", "/api/reports/top-products", params={"from": date_from, "to": date_to, "limit": limit})

@@ -12,6 +12,7 @@ etc. Las diferencias estan en cobrar() y receipt(), que cubren las dos formas.
 
 from core import db_manager
 from core import product_service as ps
+from core import report_service as rs
 from core import sales_service as ss
 from core import ticket_service as ts
 from flet_app import boletas as bol
@@ -45,6 +46,9 @@ class LocalBackend:
     adjust_item_qty = staticmethod(ts.adjust_item_qty)
     remove_item = staticmethod(ts.remove_item)
     stock_warnings_for_ticket = staticmethod(ss.stock_warnings_for_ticket)
+    report_summary = staticmethod(rs.summary)
+    report_sales = staticmethod(rs.list_sales)
+    report_top_products = staticmethod(rs.top_products)
 
     def cobrar(self, ticket_id, method, expected_total=None):
         return ss.cobrar_ticket(ticket_id, pay_method=method, expected_total=expected_total)

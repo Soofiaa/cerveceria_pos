@@ -17,6 +17,7 @@ import flet as ft
 from core import config as core_config
 from flet_app import boletas as bol
 from flet_app import multicaja
+from flet_app.api_client import ApiError, SinConexion
 from flet_app.theme import THEMES
 
 THEME_LABELS = {
@@ -40,22 +41,40 @@ def _caps(text, colors):
 
 
 class ConfigView(ft.Column):
-    def __init__(self, page, colors, on_theme_change, on_saved):
+    def __init__(self, page, colors, on_theme_change, on_saved, backend=None):
         super().__init__(expand=True, spacing=12, scroll=ft.ScrollMode.AUTO)
         self._page = page
         self.colors = colors
         self._on_theme_change = on_theme_change
         self._on_saved = on_saved
+        self.backend = backend
+        self.is_remote = getattr(backend, "is_remote", False)
 
         cfg = core_config.load_config()
         _cfg, boleta_cfg, smtp_cfg = bol.load_settings()
         self._smtp_cfg = smtp_cfg
+        server_cfg = {}
+        business_note = ""
+        if self.is_remote:
+            try:
+                server_cfg = self.backend.config()
+                business_note = "Los datos del negocio se editan en la Caja 1."
+            except (SinConexion, ApiError):
+                business_note = "Sin conexión con la Caja 1."
 
-        self.in_name = self._field("Nombre del negocio", cfg.get("business_name", ""))
-        self.in_rut = self._field("RUT", cfg.get("rut", ""))
-        self.in_address = self._field("Dirección", cfg.get("address", ""))
-        self.in_phone = self._field("Teléfono", cfg.get("phone", ""))
-        self.in_logo = self._field("Ruta del logo (texto, no se muestra)", cfg.get("logo_path", ""))
+        if self.is_remote:
+            # Datos del negocio de la Caja 1 (vacios si no responde). El logo no
+            # viaja por la API: se muestra vacio en vez de el logo local.
+            cfg = dict(cfg, business_name=server_cfg.get("business_name", ""),
+                       rut=server_cfg.get("rut", ""), address=server_cfg.get("address", ""),
+                       phone=server_cfg.get("phone", ""), logo_path="")
+
+        self.in_name = self._field("Nombre del negocio", cfg.get("business_name", ""), disabled=self.is_remote)
+        self.in_rut = self._field("RUT", cfg.get("rut", ""), disabled=self.is_remote)
+        self.in_address = self._field("Dirección", cfg.get("address", ""), disabled=self.is_remote)
+        self.in_phone = self._field("Teléfono", cfg.get("phone", ""), disabled=self.is_remote)
+        self.in_logo = self._field("Ruta del logo (texto, no se muestra)", cfg.get("logo_path", ""), disabled=self.is_remote)
+        self.business_note = ft.Text(business_note, size=12, color=colors["secondary"], visible=self.is_remote)
 
         prefix = cfg.get("ticket_prefix", "Ticket")
         self.dd_prefix = ft.Dropdown(
@@ -176,6 +195,7 @@ class ConfigView(ft.Column):
         self.controls = [
             ft.Text("Configuración", size=22, weight=ft.FontWeight.BOLD),
             _caps("Datos del negocio", colors),
+            self.business_note,
             self.in_name,
             ft.Row([self.in_rut, self.in_phone], spacing=12),
             self.in_address,
@@ -213,8 +233,8 @@ class ConfigView(ft.Column):
         ]
         self.apply_colors(colors)
 
-    def _field(self, label, value, width=400):
-        return ft.TextField(label=label, value=value, width=width, color=self.colors["text"])
+    def _field(self, label, value, width=400, disabled=False):
+        return ft.TextField(label=label, value=value, width=width, color=self.colors["text"], disabled=disabled)
 
     @staticmethod
     def _mascarar_token(token):
@@ -313,7 +333,7 @@ class ConfigView(ft.Column):
                 self._page.update()
                 return
         cfg = dict(core_config.load_config())  # copia: no mutar DEFAULT_CONFIG
-        cfg.update({
+        cfg_data = {
             "mode": mode,
             "server_url": multicaja.normalize_url(self.in_server_url.value) if mode == "client" else (cfg.get("server_url") or ""),
             "caja_number": multicaja._caja_number({"caja_number": self.in_caja_number.value}),
@@ -322,14 +342,18 @@ class ConfigView(ft.Column):
             # generada al arrancar); el campo de la caja adicional esta oculto y vacio.
             "api_token": (self.in_api_token.value or "").strip() if mode == "client"
             else str(cfg.get("api_token") or "").strip(),
-            "business_name": (self.in_name.value or "").strip() or "Mi POS",
-            "rut": (self.in_rut.value or "").strip(),
-            "address": (self.in_address.value or "").strip(),
-            "phone": (self.in_phone.value or "").strip(),
-            "logo_path": (self.in_logo.value or "").strip(),
             "ticket_prefix": self.dd_prefix.value or "Ticket",
             "theme": self.theme_active,
-        })
+        }
+        if not self.is_remote:
+            cfg_data.update({
+                "business_name": (self.in_name.value or "").strip() or "Mi POS",
+                "rut": (self.in_rut.value or "").strip(),
+                "address": (self.in_address.value or "").strip(),
+                "phone": (self.in_phone.value or "").strip(),
+                "logo_path": (self.in_logo.value or "").strip(),
+            })
+        cfg.update(cfg_data)
         core_config.save_config(cfg)
 
         new_boleta = {

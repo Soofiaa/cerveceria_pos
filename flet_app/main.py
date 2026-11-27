@@ -1492,11 +1492,9 @@ def main(page: ft.Page, restore=None):
         (nav_rep_btn, "reportes", "Reportes", ft.Icons.BAR_CHART),
         (nav_cfg_btn, "config", "Configuración", ft.Icons.SETTINGS_OUTLINED),
     )
-    # Caja cliente (Fase 5.1): solo POS y Configuracion. Productos y Reportes
-    # leen la base local, no la API: quedan ocultas hasta la Fase 5.2.
+    # Caja cliente: Productos sigue oculta (lee la base local). Reportes va por la API (Fase 5.2).
     if backend.is_remote:
         nav_prod_btn.visible = False
-        nav_rep_btn.visible = False
 
     def paint_tabs(active):
         for btn, name, label, icon in tabs:
@@ -1546,8 +1544,8 @@ def main(page: ft.Page, restore=None):
         page.update()
 
     # Vistas de la barra: se muestran dentro del area central (un Column).
-    reportes_view = ReportesView(page, _colors())
-    config_view = ConfigView(page, _colors(), on_theme_change=change_theme, on_saved=on_config_saved)
+    reportes_view = ReportesView(page, _colors(), backend=backend)
+    config_view = ConfigView(page, _colors(), on_theme_change=change_theme, on_saved=on_config_saved, backend=backend)
     reportes_card = _card(
         ft.Column([ft.Text("Reportes", size=22, weight=ft.FontWeight.BOLD, color=TEXT), reportes_view],
                   spacing=6, expand=True),
@@ -1557,7 +1555,7 @@ def main(page: ft.Page, restore=None):
 
     def apply_view(name):
         """Muestra la vista `name` en el area central (sin foco)."""
-        if backend.is_remote and name in ("productos", "reportes"):
+        if backend.is_remote and name == "productos":
             name = "pos"
         current_view["name"] = name
         paint_tabs(name)

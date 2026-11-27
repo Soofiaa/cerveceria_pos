@@ -19,7 +19,8 @@ from datetime import date, datetime
 
 import flet as ft
 
-from core import report_service as rs
+from flet_app.api_client import ApiError, SinConexion
+from flet_app.backend import LocalBackend
 
 
 def _fmt_money(value):
@@ -67,10 +68,11 @@ def parse_range(desde_txt, hasta_txt):
 class ReportesView(ft.Column):
     """Vista Reportes: rango, tarjetas, tabla de ventas, top productos, CSV."""
 
-    def __init__(self, page, colors):
+    def __init__(self, page, colors, backend=None):
         super().__init__(expand=True, spacing=14)
         self._page = page
         self.colors = colors
+        self.backend = backend or LocalBackend()
         self.picker = ft.FilePicker()
 
         today = _iso(date.today())
@@ -214,12 +216,23 @@ class ReportesView(ft.Column):
             return
         self.msg.color = self.colors["secondary"]
 
-        s = rs.summary(d1, d2)
+        try:
+            s = self.backend.report_summary(d1, d2)
+            sales = self.backend.report_sales(d1, d2)
+            top = self.backend.report_top_products(d1, d2)
+        except (SinConexion, ApiError):
+            self.msg.value = "Sin conexión con la Caja 1: no se pueden cargar los reportes."
+            self.msg.color = self.colors["danger"]
+            self.txt_total.value = self.txt_avg.value = "$0"
+            self.txt_count.value = "0"
+            self.sales_table.rows = []
+            self.top_table.rows = []
+            self._page.update()
+            return
+
         self.txt_total.value = _fmt_money(s["total"])
         self.txt_count.value = str(s["tickets"])
         self.txt_avg.value = _fmt_money(s["avg_ticket"])
-
-        sales = rs.list_sales(d1, d2)
         self.msg.value = "" if sales else f"No hay ventas entre {d1} y {d2}."
         self.sales_table.rows = [
             ft.DataRow(cells=[
@@ -235,7 +248,7 @@ class ReportesView(ft.Column):
                 ft.DataCell(ft.Text(str(p["qty"]))),
                 ft.DataCell(ft.Text(_fmt_money(p["revenue"]))),
             ])
-            for p in rs.top_products(d1, d2)
+            for p in top
         ]
         self._page.update()
 
@@ -262,10 +275,16 @@ class ReportesView(ft.Column):
 
     def _save_csv_to(self, path, d1, d2):
         try:
+            sales = self.backend.report_sales(d1, d2)
+        except (SinConexion, ApiError):
+            self._show_message("Sin conexión con la Caja 1: no se puede exportar el reporte.")
+            return
+
+        try:
             with open(path, "w", newline="", encoding="utf-8-sig") as f:
                 w = csv.writer(f)
                 w.writerow(["Fecha/hora", "N° venta", "Total"])
-                for v in rs.list_sales(d1, d2):
+                for v in sales:
                     w.writerow([v["created_at"], v["id"], v["total"]])
         except Exception as exc:
             self._show_message(f"No se pudo guardar el reporte: {exc}")
