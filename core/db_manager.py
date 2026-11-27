@@ -315,7 +315,6 @@ def bootstrap():
     migrate_open_ticket_items_add_gain_per_unit_if_missing()
     migrate_sale_items_add_display_name_if_missing()
     migrate_sale_items_add_gain_per_unit_if_missing()
-    migrate_sale_items_add_display_name_if_missing()
     migrate_products_add_stock_columns_if_missing()
     migrate_products_add_is_active_if_missing()
     ensure_common_product_exists()
