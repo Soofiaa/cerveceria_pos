@@ -71,7 +71,7 @@ def cobrar_ticket(
 
         # Ítems del ticket
         cur.execute("""
-            SELECT i.product_id, i.qty, i.unit_price, i.gain_per_unit
+            SELECT i.product_id, i.qty, i.unit_price, i.gain_per_unit, i.display_name
             FROM open_ticket_items i
             WHERE i.ticket_id=?
         """, (ticket_id,))
@@ -112,16 +112,23 @@ def cobrar_ticket(
         # Insertar detalle y descontar stock
         stock_warnings = _stock_warnings_for_ticket(cur, ticket_id)
 
-        for (product_id, qty, unit_price, gain_per_unit) in items:
+        for (product_id, qty, unit_price, gain_per_unit, display_name) in items:
             qty = int(qty)
             unit_price = int(unit_price)
             gain_per_unit = int(gain_per_unit or 0)
             line_total = qty * unit_price
 
+            if product_id != common_product_id:
+                # Ganancia congelada al cobrar: el costo de hoy, leido en esta misma
+                # transaccion. El gain_per_unit del ticket es 0 en productos regulares.
+                cur.execute("SELECT COALESCE(purchase_price, 0) FROM products WHERE id=?", (product_id,))
+                row = cur.fetchone()
+                gain_per_unit = unit_price - int(row[0] if row else 0)
+
             cur.execute("""
-                INSERT INTO sale_items (sale_id, product_id, qty, unit_price, line_total, gain_per_unit)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (sale_id, product_id, qty, unit_price, line_total, gain_per_unit))
+                INSERT INTO sale_items (sale_id, product_id, qty, unit_price, line_total, gain_per_unit, display_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (sale_id, product_id, qty, unit_price, line_total, gain_per_unit, display_name))
 
             if product_id != common_product_id:
                 cur.execute(
@@ -172,7 +179,7 @@ def items_de_venta(sale_id: int) -> List[Dict[str, Any]]:
     with get_conn() as con:
         cur = con.cursor()
         cur.execute("""
-            SELECT si.id, p.name, si.qty, si.unit_price, si.line_total
+            SELECT si.id, COALESCE(si.display_name, p.name), si.qty, si.unit_price, si.line_total
             FROM sale_items si
             JOIN products p ON p.id = si.product_id
             WHERE si.sale_id=?

@@ -235,6 +235,7 @@ def migrate_open_ticket_items_add_display_name_if_missing():
         con.execute("ALTER TABLE open_ticket_items ADD COLUMN display_name TEXT;")
         con.commit()
 
+
 def _ensure_sales_created_at_trigger_and_index(con):
     cur = con.cursor()
     # Trigger: si INSERT no provee created_at, lo completa con datetime('now')
@@ -266,6 +267,15 @@ def migrate_sale_items_add_gain_per_unit_if_missing():
         if _column_exists(con, "sale_items", "gain_per_unit"):
             return
         con.execute("ALTER TABLE sale_items ADD COLUMN gain_per_unit INTEGER NOT NULL DEFAULT 0;")
+        con.commit()
+
+
+def migrate_sale_items_add_display_name_if_missing():
+    """Añade display_name a sale_items si no existe (nombre propio del producto común)."""
+    with get_conn() as con:
+        if _column_exists(con, "sale_items", "display_name"):
+            return
+        con.execute("ALTER TABLE sale_items ADD COLUMN display_name TEXT;")
         con.commit()
 
 
@@ -303,6 +313,7 @@ def bootstrap():
     migrate_sales_add_created_at_if_missing()
     migrate_open_ticket_items_add_display_name_if_missing()
     migrate_open_ticket_items_add_gain_per_unit_if_missing()
+    migrate_sale_items_add_display_name_if_missing()
     migrate_sale_items_add_gain_per_unit_if_missing()
     migrate_products_add_stock_columns_if_missing()
     migrate_products_add_is_active_if_missing()

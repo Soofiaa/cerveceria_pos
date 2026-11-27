@@ -25,8 +25,8 @@ def export_products_csv(path: str):
         """)
         rows = cur.fetchall()
 
-    # Escribimos CSV en codificación amigable para Excel
-    with open(path, "w", newline="", encoding="latin-1") as f:
+    # utf-8 con BOM: Excel lo reconoce y no pierde tildes, ñ ni emojis
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f, delimiter=";")
         writer.writerow(["Nombre", "PrecioVenta", "PrecioCompra", "CodigoBarra", "Stock", "StockMinimo"])
         for name, sale_price, purchase_price, barcode, stock, min_stock in rows:
@@ -64,9 +64,13 @@ def import_products_csv(path: str):
     skipped = 0
 
     # Leemos CSV
-    with open(path, "r", newline="", encoding="latin-1") as f:
-        reader = csv.reader(f, delimiter=";")
-        rows = list(reader)
+    # Respaldos nuevos en utf-8; los antiguos (latin-1) no decodifican como utf-8.
+    try:
+        with open(path, "r", newline="", encoding="utf-8-sig") as f:
+            rows = list(csv.reader(f, delimiter=";"))
+    except UnicodeDecodeError:
+        with open(path, "r", newline="", encoding="latin-1") as f:
+            rows = list(csv.reader(f, delimiter=";"))
 
     if not rows:
         return {"created": 0, "updated": 0, "skipped": 0}
