@@ -18,6 +18,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, request
+from werkzeug.serving import run_simple
 
 from core import config as core_config
 from core import db_manager
@@ -366,12 +367,12 @@ def create_app():
 
 
 def run(host="0.0.0.0", port=8780, bootstrap=True):
-    """Arranca la API en la Caja 1 con el servidor de desarrollo de Flask.
+    """Arranca la API en la Caja 1 con el servidor de desarrollo de Werkzeug.
 
-    shortcut: werkzeug dev server (multihilo, sin TLS), suficiente para 2-3
-    cajas en el WiFi del local; usar waitress si hay mas carga o se empaqueta.
+    No se usa app.run() porque su banner (click.echo) escribe bytes y rompe
+    en el exe empaquetado sin consola, donde stdout solo acepta str.
     """
     if bootstrap:
         db_manager.bootstrap()
     ensure_api_token()  # sin clave la API no arranca abierta: se genera y se guarda
-    create_app().run(host=host, port=port, threaded=True, use_reloader=False)
+    run_simple(host, port, create_app(), threaded=True, use_reloader=False, use_debugger=False)
