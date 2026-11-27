@@ -1,0 +1,42 @@
+# Empaquetado de la app Flet para Windows: `flet build windows` (ver README de flet_app).
+# La app Qt (main.py, ui/) no se empaqueta con esto. requirements.txt de la
+# raiz es el de Qt; las dependencias de Flet estan aqui y en flet_app/requirements.txt.
+
+[project]
+name = "mi_pos"
+version = "0.1.0"
+description = "Mi POS - punto de venta"
+# pywin32==308 solo tiene ruedas hasta Python 3.12; Flet empaqueta 3.14 por defecto.
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "flet==1.1.2",
+    "fpdf2==2.8.1",
+    "pywin32==308",
+    # Multi-caja (Fase 5.1): API de la Caja 1 y cliente de las cajas adicionales.
+    "flask==3.1.3",
+    "requests==2.34.2",
+]
+
+[tool.flet]
+product = "Mi POS"
+artifact = "MiPOS"
+# Estables desde el primer release: Flet guarda sus datos en %APPDATA%\<company>\<product>.
+company = "MiPOS"
+
+[tool.flet.app]
+module = "flet_entry"
+# Solo core/ y flet_app/ van al paquete. La base y el config reales
+# (~/MiPOS) nunca se empaquetan: viven fuera del repo.
+exclude = [
+    "ui",
+    "tests",
+    "main.py",
+    "conftest.py",
+    "pytest.ini",
+    "requirements.txt",
+    "requirements-dev.txt",
+    "README.md",
+    "flet-spike",
+    "Mi Pos Maqueta Interfaz Moderna",
+    "dist",
+]

@@ -3,13 +3,53 @@
 # Vive en la raíz (no dentro de tests/) para que pytest agregue este
 # directorio a sys.path automáticamente y los tests puedan hacer
 # "import core.xxx" / "import ui.xxx" sin configuración adicional.
+import hashlib
 import os
 import shutil
 import tempfile
 
-import pytest
+# ---------- Aislamiento de los datos reales del usuario ----------
+# core/config.py y core/db_manager.py calculan CONFIG_PATH y DB_PATH con
+# expanduser("~") AL IMPORTARSE, y en Windows eso lee USERPROFILE. Por eso
+# esto va antes de cualquier import de core: durante los tests "~" es una
+# carpeta temporal y las rutas por defecto nunca son las reales. Asi, un test
+# que olvide pedir temp_db, o un monkeypatch.undo() que revierta su DB_PATH,
+# cae en esa carpeta temporal y no en ~/MiPOS.
+_REAL_HOME = os.path.expanduser("~")
+_REAL_FILES = [
+    os.path.join(_REAL_HOME, "MiPOS", "cerveceria.db"),
+    os.path.join(_REAL_HOME, "MiPOS", "config.json"),
+]
+_FAKE_HOME = tempfile.mkdtemp(prefix="mipos_tests_home_")
+os.environ["USERPROFILE"] = _FAKE_HOME
+os.environ["HOME"] = _FAKE_HOME  # por si algo lo lee fuera de Windows
 
-import core.db_manager as db_manager
+import pytest  # noqa: E402
+
+import core.db_manager as db_manager  # noqa: E402
+
+assert not db_manager.DB_PATH.startswith(os.path.join(_REAL_HOME, "MiPOS")), (
+    "conftest: core se importo antes de aislar USERPROFILE; DB_PATH apunta a la base real"
+)
+
+
+def _huella(path):
+    """sha256 del archivo, o None si no existe."""
+    if not os.path.exists(path):
+        return None
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _datos_reales_intactos():
+    """Red de seguridad: si la suite cambia la base o el config reales, la corrida falla."""
+    antes = {p: _huella(p) for p in _REAL_FILES}
+    yield
+    cambiados = [p for p in _REAL_FILES if _huella(p) != antes[p]]
+    shutil.rmtree(_FAKE_HOME, ignore_errors=True)
+    if cambiados:
+        pytest.fail("La suite modifico datos reales del usuario: " + ", ".join(cambiados))
 
 
 @pytest.fixture
@@ -37,3 +77,24 @@ def temp_db(monkeypatch):
     yield db_path
 
     shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_api_server(monkeypatch):
+    """Ningun test abre un puerto real: en modo "server" main() arrancaria la API de la Caja 1.
+
+    Los tests que necesitan la API la prueban con el cliente de pruebas de Flask
+    (tests/test_api_server.py); los de main() solo comprueban que se le pidio arrancar.
+    """
+    try:
+        from flet_app import main as pos_main
+    except Exception:  # los tests de core no necesitan flet instalado
+        return
+    calls = []
+
+    def fake_start(settings=None):
+        calls.append(settings)
+        return False
+
+    monkeypatch.setattr(pos_main, "start_api_server_if_needed", fake_start)
+    pos_main._api_start_calls = calls
