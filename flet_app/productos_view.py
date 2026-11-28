@@ -637,14 +637,18 @@ class ProductosView(ft.Column):
         except Exception:
             qr_src = ""
 
-        qr_image = ft.Image(src=qr_src, width=220, height=220)
+        contenido = []
+        if qr_src:
+            contenido.append(ft.Image(src=qr_src, width=220, height=220))
+        else:
+            contenido.append(ft.Text("No se pudo generar el código QR. Copia el enlace y ábrelo en el teléfono.", color=TEXT))
         url_field = ft.TextField(value=url, read_only=True, width=380, color=TEXT)
         tip_text = ft.Text("En el teléfono, agrega la página a la pantalla de inicio para abrirla después con un toque.", size=13, color=TEXT)
         how_text = ft.Text("Cómo funciona: el teléfono muestra el inventario de la Caja 1. Para que la lista se actualice, la Caja 1 tiene que estar encendida y con la aplicación abierta. Si está apagada, el teléfono muestra la última copia guardada, con su fecha, y no se actualiza hasta que la caja vuelva a estar disponible.", size=13, color=TEXT)
 
         dlg = ft.AlertDialog(
             title=ft.Text("Inventario en el teléfono", color=TEXT),
-            content=ft.Column([qr_image, url_field, tip_text, how_text], tight=True, spacing=10),
+            content=ft.Column(contenido + [url_field, tip_text, how_text], tight=True, spacing=10),
             bgcolor=WHITE,
         )
 

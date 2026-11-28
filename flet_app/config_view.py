@@ -227,7 +227,7 @@ class ConfigView(ft.Column):
             ft.Icons.CONTENT_COPY, tooltip="Copiar la clave", on_click=self._copy_inv_key,
         )
         self.inv_url = ft.TextField(
-            label="Enlace para el telefono (copialo o escanea el QR)",
+            label="Enlace para ver el inventario (cópialo o escanea el QR)",
             value="", read_only=True, width=520, color=colors["text"],
         )
         self.btn_regenerar_inv = ft.TextButton(
@@ -235,13 +235,15 @@ class ConfigView(ft.Column):
             on_click=self._ask_regenerar_inv_key,
             style=ft.ButtonStyle(color=colors["danger"]),
         )
-        self.qr_img = ft.Image(src="", width=220, height=220)
+        self.qr_img = ft.Image(src="", width=220, height=220, visible=False)
+        self.qr_no_img = ft.Text("No se pudo generar el código QR. Copia el enlace y ábrelo en el teléfono.", color=colors["text"], visible=False)
         self.inv_box = ft.Column(
             [
+                _caps("Ver inventario en el teléfono", colors),
                 ft.Row([self.txt_inv_key, self.btn_copy_inv_key], spacing=4),
                 self.inv_url,
                 ft.Text("El teléfono solo se actualiza si esta caja está encendida, con la aplicación abierta.", size=12, color=colors["secondary"]),
-                ft.Row([self.btn_regenerar_inv, self.qr_img], spacing=16, vertical_alignment=ft.CrossAxisAlignment.START),
+                ft.Row([self.btn_regenerar_inv, self.qr_img, self.qr_no_img], spacing=16, vertical_alignment=ft.CrossAxisAlignment.START),
                 ft.Text("Solo lectura: el telefono solo puede ver el inventario. "
                         "Al regenerar la clave, los telefonos con el enlace anterior dejan de funcionar.",
                         size=12, color=colors["secondary"]),
@@ -408,8 +410,12 @@ class ConfigView(ft.Column):
         self.inv_url.value = url
         try:
             self.qr_img.src = "data:image/svg+xml;base64," + base64.b64encode(_qr_svg(url).encode("utf-8")).decode("ascii")
+            self.qr_img.visible = True
+            self.qr_no_img.visible = False
         except Exception:
             self.qr_img.src = ""
+            self.qr_img.visible = False
+            self.qr_no_img.visible = True
 
     # ---------- Impresora / correo ----------
     def _sync_printer_visibility(self, e=None):
