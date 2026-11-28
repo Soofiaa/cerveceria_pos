@@ -22,6 +22,7 @@ import flet as ft
 from core import product_backup_service as pbs
 from core import product_service as ps
 from core import category_service as cs
+from core.utils_format import fmt_money as _fmt_money
 
 TEXT = "#1c2833"
 PRIMARY = "#6c3483"
@@ -52,16 +53,6 @@ def _parse_money_or_none(txt):
     if not cleaned.isdigit():
         return None
     return int(cleaned)
-
-
-def _fmt_money(value):
-    """Formato chileno: 1500 -> $1.500."""
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        n = 0
-    sign = "-" if n < 0 else ""
-    return sign + "$" + f"{abs(n):,}".replace(",", ".")
 
 
 def is_common_product(product):
