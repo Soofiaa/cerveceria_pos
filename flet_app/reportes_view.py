@@ -14,17 +14,18 @@ Reglas:
 - Los dialogos de aviso van en page.overlay y se quitan en on_dismiss.
 """
 
+import base64
 import csv
 from datetime import date, datetime
 
 import flet as ft
 
 from core import config as core_config
+from flet_app import multicaja
 from flet_app.api_client import ApiError, SinConexion
 from flet_app.backend import LocalBackend
+from flet_app.config_view import _ip_local, _qr_svg, INVENTARIO_PUERTO
 from flet_app.lista_compras_pdf import build_lista_compras_pdf
-
-
 from core.utils_format import fmt_money as _fmt_money
 
 
@@ -112,6 +113,12 @@ class ReportesView(ft.Column):
 
         self.btn_ver = ft.FilledButton("Ver", on_click=lambda e: self.load_data())
         self.btn_pdf = ft.TextButton("Exportar PDF...", on_click=self._export_pdf, style=ft.ButtonStyle(color=self.colors["primary"]))
+        self.btn_ver_telefono = ft.TextButton(
+            "Ver en el teléfono",
+            on_click=self._open_telefono_dialog,
+            style=ft.ButtonStyle(color=self.colors["primary"]),
+            visible=not getattr(self.backend, "is_remote", False),
+        )
         self.lista_compras_container = ft.Column(spacing=10, expand=True)
 
         self.cards = ft.Row(
@@ -154,7 +161,7 @@ class ReportesView(ft.Column):
                 vertical_alignment=ft.CrossAxisAlignment.START,
             ),
             ft.Divider(),
-            ft.Row([ft.Text("Lista de compras", size=20, weight=ft.FontWeight.BOLD), self.btn_pdf], spacing=10),
+            ft.Row([ft.Text("Lista de compras", size=20, weight=ft.FontWeight.BOLD), self.btn_pdf, self.btn_ver_telefono], spacing=10),
             ft.Column([self.lista_compras_container], scroll=ft.ScrollMode.AUTO, expand=True),
         ]
         self.apply_colors(colors)
@@ -268,8 +275,10 @@ class ReportesView(ft.Column):
         if getattr(self.backend, "is_remote", False):
             self.lista_compras_container.controls = [ft.Text("La lista de compras se genera en la Caja 1.")]
             self.btn_pdf.visible = False
+            self.btn_ver_telefono.visible = False
         else:
             self.btn_pdf.visible = True
+            self.btn_ver_telefono.visible = True
             items = self.backend.shopping_list()
             if not items:
                 self.lista_compras_container.controls = [ft.Text("Nada falta por ahora.")]
@@ -301,6 +310,44 @@ class ReportesView(ft.Column):
                     )
                     self.lista_compras_container.controls.append(card)
 
+        self._page.update()
+
+    # ---------- Telefono (QR) ----------
+    def _open_telefono_dialog(self, e=None):
+        inv_key = multicaja.ensure_inventory_key()
+        ip = _ip_local()
+        url = f"http://{ip}:{INVENTARIO_PUERTO}/inventario?clave={inv_key}"
+        
+        try:
+            qr_src = "data:image/svg+xml;base64," + base64.b64encode(_qr_svg(url).encode("utf-8")).decode("ascii")
+        except Exception:
+            qr_src = ""
+
+        qr_image = ft.Image(src=qr_src, width=220, height=220)
+        url_field = ft.TextField(value=url, read_only=True, width=380, color=self.colors["text"])
+        tip_text = ft.Text("En el teléfono, agrega la página a la pantalla de inicio para abrirla después con un toque.", size=13, color=self.colors["text"])
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("Inventario en el teléfono", color=self.colors["text"]),
+            content=ft.Column([qr_image, url_field, tip_text], tight=True, spacing=10),
+            bgcolor=self.colors["surface"],
+        )
+
+        def close(e2):
+            dlg.open = False
+            self._page.update()
+
+        dlg.actions = [ft.TextButton("Aceptar", autofocus=True, on_click=close,
+                                     style=ft.ButtonStyle(color=self.colors["primary"]))]
+
+        async def on_dismiss(e2):
+            if dlg in self._page.overlay:
+                self._page.overlay.remove(dlg)
+            self._page.update()
+
+        dlg.on_dismiss = on_dismiss
+        self._page.overlay.append(dlg)
+        dlg.open = True
         self._page.update()
 
     # ---------- Exportar CSV (mismo patron que Productos) ----------
