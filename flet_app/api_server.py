@@ -26,7 +26,7 @@ from core import product_service as ps
 from core import report_service as rs
 from core import sales_service as ss
 from core import ticket_service as ts
-from flet_app.multicaja import ensure_api_token
+from flet_app.multicaja import ensure_api_token, ensure_inventory_key
 
 API_VERSION = 1
 PAY_METHODS = ("efectivo", "credito", "debito", "transferencia")
@@ -99,13 +99,22 @@ def create_app():
 
     @app.before_request
     def _auth():
-        """Toda ruta (salvo /api/health) exige la clave compartida de config.json.
-
-        Sin clave configurada la API NO queda abierta: responde 401 a todo. El
-        arranque (run) genera una clave si falta, asi que esto es la red de seguridad.
+        """Toda ruta exige autenticacion:
+           - /api/inventory exige X-Inventory-Key (clave de inventario).
+           - Las demas rutas /api/ (salvo /api/health) exigen X-Caja-Token (token de caja).
         """
-        if request.path == "/api/health":
+        if request.path == "/api/health" or request.path == "/inventario":
             return None
+        
+        if request.path == "/api/inventory":
+            key = request.headers.get("X-Inventory-Key", "")
+            cfg = core_config.load_config()
+            stored_key = str(cfg.get("inventory_key") or "").strip()
+            if not stored_key or not hmac.compare_digest(key.encode("utf-8"), stored_key.encode("utf-8")):
+                _registrar_intento_fallido(request)
+                return _err("Clave de inventario incorrecta o ausente.", 401)
+            return None
+
         token = str(core_config.load_config().get("api_token") or "").strip()
         sent = request.headers.get("X-Caja-Token", "")
         if not token or not hmac.compare_digest(sent.encode("utf-8"), token.encode("utf-8")):
@@ -154,6 +163,26 @@ def create_app():
     @app.get("/api/products")
     def products():
         return jsonify(ps.list_products(request.args.get("q", "")))
+
+    @app.get("/api/inventory")
+    def inventory():
+        key = request.headers.get("X-Inventory-Key", "")
+        cfg = core_config.load_config()
+        stored_key = str(cfg.get("inventory_key") or "").strip()
+        if not stored_key or not hmac.compare_digest(key.encode("utf-8"), stored_key.encode("utf-8")):
+            _registrar_intento_fallido(request)
+            return _err("Clave de inventario incorrecta o ausente.", 401)
+        
+        return jsonify({
+            **ps.inventory_snapshot(),
+            "business_name": str(cfg.get("business_name") or "Mi POS"),
+            "generated_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        })
+
+    @app.get("/inventario")
+    def inventario_page():
+        from flet_app.inventario_page import INVENTARIO_HTML
+        return INVENTARIO_HTML, 200, {"Content-Type": "text/html; charset=utf-8"}
 
     @app.get("/api/products/exact")
     def product_exact():
@@ -375,4 +404,5 @@ def run(host="0.0.0.0", port=8780, bootstrap=True):
     if bootstrap:
         db_manager.bootstrap()
     ensure_api_token()  # sin clave la API no arranca abierta: se genera y se guarda
+    ensure_inventory_key()  # clave de solo lectura para el inventario del telefono
     run_simple(host, port, create_app(), threaded=True, use_reloader=False, use_debugger=False)

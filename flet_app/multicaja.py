@@ -89,6 +89,22 @@ def ensure_api_token():
     return token
 
 
+def ensure_inventory_key(regenerate=False):
+    """Clave de solo lectura del inventario en el teléfono (distinta del token de caja).
+
+    Misma mecánica que ensure_api_token: si falta se genera y se guarda; si existe se deja.
+    Con regenerate=True se reemplaza (la anterior deja de funcionar).
+    """
+    cfg = dict(core_config.load_config())  # copia: load_config puede devolver DEFAULT_CONFIG
+    key = str(cfg.get("inventory_key") or "").strip()
+    if key and not regenerate:
+        return key
+    key = secrets.token_urlsafe(16)
+    cfg["inventory_key"] = key
+    core_config.save_config(cfg)
+    return key
+
+
 def save_caja_settings(mode=None, server_url=None, caja_number=None, caja_name=None):
     """Guarda los campos pasados en config.json sin tocar el resto."""
     cfg = dict(core_config.load_config())  # copia: load_config puede devolver DEFAULT_CONFIG

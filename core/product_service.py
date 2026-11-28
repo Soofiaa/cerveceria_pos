@@ -236,6 +236,32 @@ def shopping_list() -> List[Dict[str, Any]]:
     return items
 
 
+def inventory_snapshot() -> Dict[str, Any]:
+    """Foto de solo lectura para el teléfono: faltantes + inventario completo.
+
+    El inventario son los productos activos sin 'Producto común', por nombre de
+    categoría (los sin categoría al final) y luego por nombre de producto.
+    """
+    with get_conn() as con:
+        rows = con.execute("""
+            SELECT p.id, p.name, p.stock, p.min_stock, p.category_id, c.name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.is_active=1 AND p.name != 'Producto común'
+        """).fetchall()
+    inventario = [
+        {"id": r[0], "name": r[1], "stock": r[2], "min_stock": r[3],
+         "category_id": r[4], "category_name": r[5]}
+        for r in rows
+    ]
+    inventario.sort(key=lambda p: (
+        p["category_name"] is None,
+        (p["category_name"] or "").casefold(),
+        p["name"].casefold(),
+    ))
+    return {"faltantes": shopping_list(), "inventario": inventario}
+
+
 
 def delete_product(product_id: int):
     """
