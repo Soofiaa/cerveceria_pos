@@ -75,10 +75,36 @@ def test_shopping_list_logic(temp_db):
     assert "Producto común" not in names
     assert "Inactivo" not in names
     
+    # Afirmar valores específicos
+    # Agotado (stock 0, min 5 -> agotado=True, sugerido=10)
+    # Min 0 (stock 0, min 0 -> agotado=True, sugerido=None)
+    # Bajo (stock 2, min 6 -> agotado=False, sugerido=10)
+    
+    item_agotado = next(i for i in items if i['name'] == "Agotado")
+    assert item_agotado['agotado'] is True
+    assert item_agotado['sugerido'] == 10
+
+    item_min0 = next(i for i in items if i['name'] == "Min 0")
+    assert item_min0['agotado'] is True
+    assert item_min0['sugerido'] is None
+
+    item_bajo = next(i for i in items if i['name'] == "Bajo")
+    assert item_bajo['agotado'] is False
+    assert item_bajo['sugerido'] == 10
+
     assert items[0]['name'] == "Agotado"
     assert items[1]['name'] == "Min 0"
     assert items[2]['name'] == "Bajo"
     assert items[3]['name'] == "Al limite"
+
+def test_shopping_list_stock_negativo(temp_db):
+    p_id = ps.create_product("Negativo", sale_price=100, stock=5, min_stock=5)
+    ps.adjust_stock(p_id, -8) # 5 - 8 = -3
+    
+    items = ps.shopping_list()
+    item_neg = next(i for i in items if i['name'] == "Negativo")
+    assert item_neg['agotado'] is True
+    assert item_neg['sugerido'] == 13 # 2*5 - (-3) = 13
 
 def test_build_lista_compras_pdf_robustness(tmp_path):
     items = [
@@ -107,14 +133,35 @@ def test_reportes_view_lista_compras(temp_db):
     view.load_data()
     
     found_agotado = False
+    found_bajo_text = False
     for c in view.lista_compras_container.controls:
         if isinstance(c, ft.Container):
             row = c.content
             if isinstance(row, ft.Row):
-                if "Agotado" in row.controls[0].controls[0].value:
+                col = row.controls[0]
+                name_txt = col.controls[0].value
+                details_txt = col.controls[1].value
+                if "Agotado" in name_txt:
                     found_agotado = True
                     assert row.controls[1].content.value == "AGOTADO"
+                if "Bajo" in name_txt:
+                    assert details_txt == "Quedan 2 · Comprar 10"
+                    found_bajo_text = True
     assert found_agotado
+    assert found_bajo_text
+
+def test_reportes_view_vacio(temp_db):
+    page = FakePage()
+    backend = MockBackend(is_remote=False, items=[])
+    colors = {
+        "text": "black", "primary": "blue", "secondary": "gray", "danger": "red",
+        "accent": "green", "surface": "white", "primary_text": "white"
+    }
+    view = ReportesView(page, colors, backend=backend)
+    view.load_data()
+    
+    assert len(view.lista_compras_container.controls) == 1
+    assert view.lista_compras_container.controls[0].value == "Nada falta por ahora."
 
 def test_reportes_view_remote(temp_db):
     page = FakePage()
