@@ -32,6 +32,7 @@ from urllib.parse import quote
 from core import config as core_config
 from core import db_manager
 from core import sales_service as ss
+from core.utils_format import fmt_money
 
 PAY_LABELS = {
     "efectivo": "Efectivo",
@@ -84,15 +85,6 @@ class BoletaError(Exception):
 
 
 # ---------- Formato ----------
-def fmt_money(value):
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        n = 0
-    sign = "-" if n < 0 else ""
-    return sign + "$" + f"{abs(n):,}".replace(",", ".")
-
-
 def is_valid_email(address):
     return bool(EMAIL_RE.match((address or "").strip()))
 

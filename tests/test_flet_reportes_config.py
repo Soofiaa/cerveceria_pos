@@ -224,7 +224,7 @@ def test_parse_range_formato_invalido():
         parse_range("19/11/2026", "")
 
 
-def test_reportes_no_muestra_ganancia_ni_margen():
+def test_reportes_muestra_ganancia_y_margen():
     view = ReportesView(FakePage(), get_theme("lila"))
     textos = []
 
@@ -240,7 +240,8 @@ def test_reportes_no_muestra_ganancia_ni_margen():
                 walk(v)
 
     walk(view)
-    assert not any("ganancia" in t.lower() or "margen" in t.lower() for t in textos)
+    assert any("ganancia" in t.lower() for t in textos)
+    assert any("margen" in t.lower() for t in textos)
 
 
 def test_exportar_csv_escribe_ventas(temp_db, tmp_path):

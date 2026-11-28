@@ -1,13 +1,13 @@
 """Mi POS en Flet - Vista Reportes (Fase 3).
 
 Rango Desde/Hasta (campo de fecha + DatePicker), por defecto hoy. Muestra
-Total vendido, N° de ventas y Ticket promedio (core.report_service.summary),
+Total vendido, N° de ventas, Ticket promedio, Ganancia y Margen (core.report_service.summary),
 la tabla de ventas del rango (list_sales, mas nuevas primero) y los
 productos mas vendidos (top_products). Exporta el rango a CSV.
 
 Reglas:
-- NO muestra ganancia ni margen: summary usa precio-costo cuando
-  gain_per_unit es 0 y eso infla la ganancia (M1, otra fase).
+- La ganancia usa el gain_per_unit congelado al cobrar (Fase D); las ventas anteriores
+  a esa fase se calculan con el costo actual del producto.
 - Flet 1.1.2: DatePicker se abre con page.show_dialog(dp) (no existe
   pick_date ni page.overlay para el). El FilePicker es un Service: va en
   la pagina, no en page.overlay; save_file es async.
@@ -25,14 +25,7 @@ from flet_app.backend import LocalBackend
 from flet_app.lista_compras_pdf import build_lista_compras_pdf
 
 
-def _fmt_money(value):
-    """Formato chileno: 1500 -> $1.500."""
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        n = 0
-    sign = "-" if n < 0 else ""
-    return sign + "$" + f"{abs(n):,}".replace(",", ".")
+from core.utils_format import fmt_money as _fmt_money
 
 
 def _iso(d):
@@ -96,6 +89,8 @@ class ReportesView(ft.Column):
         self.txt_total = ft.Text("$0", size=24, weight=ft.FontWeight.BOLD)
         self.txt_count = ft.Text("0", size=24, weight=ft.FontWeight.BOLD)
         self.txt_avg = ft.Text("$0", size=24, weight=ft.FontWeight.BOLD)
+        self.txt_profit = ft.Text("$0", size=24, weight=ft.FontWeight.BOLD)
+        self.txt_margin = ft.Text("0%", size=24, weight=ft.FontWeight.BOLD)
         self.msg = ft.Text("", color=colors["secondary"])
 
         self.sales_table = ft.DataTable(
@@ -124,6 +119,8 @@ class ReportesView(ft.Column):
                 self._card("Total vendido", self.txt_total),
                 self._card("N° de ventas", self.txt_count),
                 self._card("Ticket promedio", self.txt_avg),
+                self._card("Ganancia", self.txt_profit),
+                self._card("Margen", self.txt_margin),
             ],
             spacing=14,
         )
@@ -168,12 +165,14 @@ class ReportesView(ft.Column):
         self.txt_total.color = colors["primary"]
         self.txt_count.color = colors["primary"]
         self.txt_avg.color = colors["primary"]
+        self.txt_profit.color = colors["primary"]
+        self.txt_margin.color = colors["primary"]
         self.msg.color = colors["secondary"]
         self.btn_ver.style = ft.ButtonStyle(bgcolor=colors["primary"], color=colors["primary_text"])
         for tf in (self.in_desde, self.in_hasta):
             tf.color = colors["text"]
 
-    def _card(self, title, value):
+    def _card(self, title, value, color=None):
         return ft.Container(
             content=ft.Column(
                 [ft.Text(title.upper(), size=11, weight=ft.FontWeight.W_800, color=self.colors["secondary"]),
@@ -184,7 +183,7 @@ class ReportesView(ft.Column):
             border_radius=14,
             width=220,
             bgcolor=self.colors["surface"],
-            border=ft.Border.all(1, self.colors["accent"]),
+            border=ft.Border.all(1, color or self.colors["accent"]),
         )
 
     # ---------- DatePicker: se abre con page.show_dialog ----------
@@ -241,6 +240,11 @@ class ReportesView(ft.Column):
         self.txt_total.value = _fmt_money(s["total"])
         self.txt_count.value = str(s["tickets"])
         self.txt_avg.value = _fmt_money(s["avg_ticket"])
+        self.txt_profit.value = _fmt_money(s.get("profit", 0))
+        tot = s["total"]
+        prof = s.get("profit", 0)
+        margin_val = (prof / tot * 100) if tot > 0 else 0.0
+        self.txt_margin.value = f"{margin_val:.1f}%" if tot > 0 else "0%"
         self.msg.value = "" if sales else f"No hay ventas entre {d1} y {d2}."
         self.sales_table.rows = [
             ft.DataRow(cells=[

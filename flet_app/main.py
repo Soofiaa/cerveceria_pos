@@ -37,6 +37,7 @@ import flet as ft
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import config as core_config  # noqa: E402
+from core.utils_format import fmt_money  # noqa: E402
 from flet_app import boletas as bol  # noqa: E402
 from flet_app.api_client import ApiError, SinConexion  # noqa: E402
 from flet_app.backend import LocalBackend, make_backend  # noqa: E402
@@ -124,16 +125,6 @@ PAY_METHODS = [
 
 
 # ---------- Logica pura (sin UI, se prueba en tests/test_flet_logic.py) ----------
-def fmt_money(value):
-    """Formato chileno: 1500 -> $1.500."""
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        n = 0
-    sign = "-" if n < 0 else ""
-    return sign + "$" + f"{abs(n):,}".replace(",", ".")
-
-
 def parse_price(txt):
     """'$10.500', '10.500', '10,500' -> 10500. Igual que Qt: solo digitos."""
     digits = "".join(ch for ch in (txt or "") if ch.isdigit())
