@@ -133,7 +133,9 @@ def test_inventario_page_sirve_html(temp_db, tmp_path, monkeypatch):
     assert r.content_type.startswith("text/html")
     html = r.get_data(as_text=True)
     assert "mipos_inv_data" in html
-    assert "Sin conexion" in html
+    assert "Sin conexión con la Caja 1. Estás viendo la última copia" in html
+    assert "No se actualiza mientras la caja esté apagada." in html
+    assert "Sin conexión con la Caja 1 y todavía no hay una copia guardada" in html
 
 
 # ---------- Vista de configuracion ----------
@@ -173,3 +175,18 @@ def test_config_view_bloque_inventario(temp_db, tmp_path, monkeypatch):
     assert view.txt_inv_key is not None
     assert view.btn_regenerar_inv is not None
     assert view.btn_copy_inv_key is not None
+
+    # El bloque de inventario contiene la línea nueva sobre actualización
+    texto_encontrado = False
+    def _buscar_texto(control):
+        nonlocal texto_encontrado
+        if texto_encontrado:
+            return
+        if hasattr(control, 'value') and isinstance(getattr(control, 'value'), str):
+            if "El teléfono solo se actualiza si esta caja está encendida" in control.value:
+                texto_encontrado = True
+        if hasattr(control, 'controls') and isinstance(getattr(control, 'controls'), list):
+            for c in control.controls:
+                _buscar_texto(c)
+    _buscar_texto(view.inv_box)
+    assert texto_encontrado, "No se encontró el texto sobre actualización del teléfono en ConfigView.inv_box"

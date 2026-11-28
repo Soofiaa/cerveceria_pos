@@ -46,6 +46,16 @@ def test_productos_view_ver_en_telefono():
     qr_img = content.controls[0]
     assert isinstance(qr_img, ft.Image)
     assert qr_img.src.startswith("data:image/svg+xml")
+    # El diálogo contiene el párrafo "Cómo funciona"
+    how_texts = []
+    def _buscar_textos(control):
+        if hasattr(control, 'value') and isinstance(getattr(control, 'value'), str):
+            how_texts.append(control.value)
+        if hasattr(control, 'controls') and isinstance(getattr(control, 'controls'), list):
+            for c in control.controls:
+                _buscar_textos(c)
+    _buscar_textos(content)
+    assert any("Cómo funciona: el teléfono muestra el inventario de la Caja 1." in t for t in how_texts), "El diálogo del producto no contiene el párrafo Cómo funciona"
 
 def test_inventario_html_markers():
     assert "Tip: agrega esta página" in INVENTARIO_HTML
@@ -54,3 +64,7 @@ def test_inventario_html_markers():
     assert "Comprados" in INVENTARIO_HTML
     assert "Solo lo que falta" in INVENTARIO_HTML
     assert "Todo" in INVENTARIO_HTML
+    # Textos sin conexión exactos
+    assert "Sin conexión con la Caja 1. Estás viendo la última copia" in INVENTARIO_HTML
+    assert "No se actualiza mientras la caja esté apagada." in INVENTARIO_HTML
+    assert "Sin conexión con la Caja 1 y todavía no hay una copia guardada" in INVENTARIO_HTML

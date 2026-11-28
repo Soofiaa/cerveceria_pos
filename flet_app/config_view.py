@@ -240,6 +240,7 @@ class ConfigView(ft.Column):
             [
                 ft.Row([self.txt_inv_key, self.btn_copy_inv_key], spacing=4),
                 self.inv_url,
+                ft.Text("El teléfono solo se actualiza si esta caja está encendida, con la aplicación abierta.", size=12, color=colors["secondary"]),
                 ft.Row([self.btn_regenerar_inv, self.qr_img], spacing=16, vertical_alignment=ft.CrossAxisAlignment.START),
                 ft.Text("Solo lectura: el telefono solo puede ver el inventario. "
                         "Al regenerar la clave, los telefonos con el enlace anterior dejan de funcionar.",

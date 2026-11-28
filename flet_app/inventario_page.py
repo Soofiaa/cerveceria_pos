@@ -57,7 +57,7 @@ INVENTARIO_HTML = """<!DOCTYPE html>
     <h1 id="nombre-negocio">Inventario</h1>
     <div class="sub" id="actualizado">Actualizado --:--</div>
   </div>
-  <div class="sinconexion" id="banda" style="display:none">Sin conexion <span id="fecha-copia"></span></div>
+  <div class="sinconexion" id="banda" style="display:none"><span id="fecha-copia"></span></div>
   <div class="controles">
     <div class="buscador"><input type="search" id="buscador" placeholder="Buscar producto..."></div>
   </div>
@@ -327,8 +327,7 @@ INVENTARIO_HTML = """<!DOCTYPE html>
     const banda = document.getElementById("banda");
     const fecha = document.getElementById("fecha-copia");
     banda.style.display = "block";
-    if (msg) fecha.textContent = "· " + msg;
-    else fecha.textContent = "";
+    fecha.textContent = msg || "";
   }
 
   function ocultarSinConexion(){
@@ -355,13 +354,13 @@ INVENTARIO_HTML = """<!DOCTYPE html>
       try {
         const data = JSON.parse(copia);
         dibujar(data);
-        mostrarSinConexion("Datos del " + fechaHora(data.generated_at));
+        mostrarSinConexion("Sin conexión con la Caja 1. Estás viendo la última copia, guardada el " + fechaHora(data.generated_at) + ". No se actualiza mientras la caja esté apagada.");
       } catch (e2){
         document.getElementById("vacio").style.display = "block";
       }
     } else {
       document.getElementById("vacio").style.display = "block";
-      mostrarSinConexion(null);
+      mostrarSinConexion("Sin conexión con la Caja 1 y todavía no hay una copia guardada en este teléfono. Abre esta página una vez con la Caja 1 encendida para dejarla guardada.");
     }
   }
 
