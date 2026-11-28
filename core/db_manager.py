@@ -62,6 +62,13 @@ DB_PATH = os.path.join(USER_DATA_DIR, "cerveceria.db")
 DDL = """
 PRAGMA foreign_keys=ON;
 
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_nocase ON categories (name COLLATE NOCASE);
+
 CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
@@ -303,6 +310,15 @@ def migrate_products_add_is_active_if_missing():
         con.commit()
 
 
+def migrate_products_add_category_id_if_missing():
+    """Añade 'category_id' a products si no existe."""
+    with get_conn() as con:
+        if _column_exists(con, "products", "category_id"):
+            return
+        con.execute("ALTER TABLE products ADD COLUMN category_id INTEGER;")
+        con.commit()
+
+
 def bootstrap():
     # Crear estructura base
     with get_conn() as con:
@@ -317,4 +333,5 @@ def bootstrap():
     migrate_sale_items_add_gain_per_unit_if_missing()
     migrate_products_add_stock_columns_if_missing()
     migrate_products_add_is_active_if_missing()
+    migrate_products_add_category_id_if_missing()
     ensure_common_product_exists()

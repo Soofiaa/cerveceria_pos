@@ -161,7 +161,7 @@ def test_dialog_duplicate_barcode_keeps_dialog_open(temp_db):
     fields[1].value = "2000"
     fields[3].value = "DUP2"
     dlg.actions[0].on_click(None)
-    assert "código de barras" in fields[6].value
+    assert "código de barras" in fields[7].value
     assert dlg.open is True
     assert len(ps.list_products("Otro")) == 0
 
@@ -300,7 +300,7 @@ def test_boton_reactivar_vuelve_a_activar(temp_db):
 def test_boton_guardar_lista_es_async(temp_db):
     page = FakePage()
     view = ProductosView(page)
-    guardar = view.controls[1].controls[1]
+    guardar = view.controls[1].controls[2]
     assert guardar.content == "Guardar lista..."
     assert inspect.iscoroutinefunction(guardar.on_click)
 

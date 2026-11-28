@@ -21,6 +21,7 @@ import flet as ft
 
 from core import product_backup_service as pbs
 from core import product_service as ps
+from core import category_service as cs
 
 TEXT = "#1c2833"
 PRIMARY = "#6c3483"
@@ -102,6 +103,16 @@ class ProductosView(ft.Column):
             on_submit=lambda e: self.load_data(),
             expand=True,
         )
+        self.filter_category = ft.Dropdown(
+            label="Categoría",
+            width=160,
+            options=[
+                ft.DropdownOption(key="all", text="Todas"),
+                ft.DropdownOption(key="", text="Sin categoría"),
+            ],
+            value="all",
+            on_select=lambda e: self.load_data(),
+        )
         # Switch no tiene label_style en Flet 1.1.2: la etiqueta va aparte
         # para que se lea (antes quedaba texto claro sobre fondo claro).
         self.chk_inactivos = ft.Switch(
@@ -137,6 +148,7 @@ class ProductosView(ft.Column):
             ft.Row(
                 [
                     self.search,
+                    self.filter_category,
                     ft.FilledButton(
                         "Buscar",
                         on_click=lambda e: self.load_data(),
@@ -155,6 +167,11 @@ class ProductosView(ft.Column):
                         "Agregar producto",
                         on_click=self._on_add,
                         style=_state_style(PRIMARY, PRIMARY_TEXT),
+                    ),
+                    ft.TextButton(
+                        "Categorías",
+                        on_click=self._open_categories_dialog,
+                        style=ft.ButtonStyle(color=PRIMARY),
                     ),
                     ft.TextButton(
                         "Guardar lista...",
@@ -239,9 +256,33 @@ class ProductosView(ft.Column):
             self.on_products_changed()
 
     # ---------- Lista ----------
+    def _refresh_category_filters(self):
+        cats = cs.list_categories()
+        opts = [
+            ft.DropdownOption(key="all", text="Todas"),
+            ft.DropdownOption(key="", text="Sin categoría"),
+        ]
+        for c in cats:
+            opts.append(ft.DropdownOption(key=str(c["id"]), text=c["name"]))
+        curr_val = self.filter_category.value
+        self.filter_category.options = opts
+        if curr_val != "all" and curr_val != "" and not any(o.key == curr_val for o in opts):
+            self.filter_category.value = "all"
+        self._page.update()
+
     def load_data(self, e=None):
+        self._refresh_category_filters()
         q = (self.search.value or "").strip()
         prods = ps.list_products(q, incluir_inactivos=self.chk_inactivos.value)
+        
+        cat_filter = self.filter_category.value
+        if cat_filter not in (None, "all"):
+            if cat_filter == "":
+                prods = [p for p in prods if p["category_id"] is None]
+            else:
+                cat_id_int = int(cat_filter)
+                prods = [p for p in prods if p["category_id"] == cat_id_int]
+
         rows = []
         for p in prods:
             pid = p["id"]
@@ -353,6 +394,56 @@ class ProductosView(ft.Column):
             str(data.get("min_stock", "")) if data else "",
             keyboard_number=True,
         )
+        
+        cats = cs.list_categories()
+        cat_options = [ft.DropdownOption(key="", text="Sin categoría")]
+        for c in cats:
+            cat_options.append(ft.DropdownOption(key=str(c["id"]), text=c["name"]))
+        
+        default_cat = str(data.get("category_id") or "") if data else ""
+        in_category = ft.Dropdown(
+            label="Categoría",
+            options=cat_options,
+            value=default_cat,
+            color=TEXT,
+            bgcolor=WHITE,
+            expand=True,
+        )
+
+        async def _on_new_category(e=None):
+            in_cat_name = ft.TextField(label="Nombre de categoría", color=TEXT, bgcolor=WHITE)
+            err_cat = ft.Text("", color=ERROR)
+            dlg_cat = ft.AlertDialog(
+                title=ft.Text("Nueva categoría", color=TEXT),
+                content=ft.Column([in_cat_name, err_cat], tight=True, width=300),
+                bgcolor=WHITE,
+            )
+            def save_cat(ev):
+                cname = (in_cat_name.value or "").strip()
+                try:
+                    new_id = cs.create_category(cname)
+                except ValueError as exc:
+                    err_cat.value = str(exc)
+                    self._page.update()
+                    return
+                self._close_dialog(dlg_cat)
+                updated_cats = cs.list_categories()
+                new_opts = [ft.DropdownOption(key="", text="Sin categoría")]
+                for c in updated_cats:
+                    new_opts.append(ft.DropdownOption(key=str(c["id"]), text=c["name"]))
+                in_category.options = new_opts
+                in_category.value = str(new_id)
+                self._refresh_category_filters()
+                self._page.update()
+
+            dlg_cat.actions = [
+                ft.FilledButton("Guardar", on_click=save_cat, style=_state_style(PRIMARY, PRIMARY_TEXT)),
+                ft.TextButton("Cancelar", on_click=lambda ev: self._close_dialog(dlg_cat), style=ft.ButtonStyle(color=PRIMARY)),
+            ]
+            self._display_dialog(dlg_cat)
+
+        btn_new_cat = ft.TextButton("Nueva", on_click=_on_new_category, style=ft.ButtonStyle(color=PRIMARY))
+        
         error_lbl = ft.Text("", color=ERROR)
 
         dlg = ft.AlertDialog(
@@ -360,7 +451,9 @@ class ProductosView(ft.Column):
                 "Editar producto" if is_edit else "Nuevo producto", color=TEXT
             ),
             content=ft.Column(
-                [in_name, in_sale, in_purchase, in_barcode, in_stock, in_min_stock, error_lbl],
+                [in_name, in_sale, in_purchase, in_barcode, in_stock, in_min_stock, 
+                 ft.Row([in_category, btn_new_cat], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                 error_lbl],
                 tight=True,
                 width=380,
                 scroll=ft.ScrollMode.AUTO,
@@ -389,6 +482,10 @@ class ProductosView(ft.Column):
             if min_stock is None:
                 min_stock = 0
             barcode = (in_barcode.value or "").strip() or None
+            
+            cat_val = in_category.value
+            category_id = int(cat_val) if cat_val else None
+
             try:
                 if is_edit:
                     ps.update_product(
@@ -399,6 +496,7 @@ class ProductosView(ft.Column):
                         barcode=barcode,
                         stock=stock,
                         min_stock=min_stock,
+                        category_id=category_id,
                     )
                 else:
                     ps.create_product(
@@ -408,10 +506,9 @@ class ProductosView(ft.Column):
                         barcode=barcode,
                         stock=stock,
                         min_stock=min_stock,
+                        category_id=category_id,
                     )
             except ValueError as exc:
-                # Codigo duplicado u otro error de core: el dialogo queda
-                # abierto y no se pierde lo escrito (como Qt, M7).
                 error_lbl.value = str(exc)
                 self._page.update()
                 return
@@ -528,3 +625,65 @@ class ProductosView(ft.Column):
             self._show_message(f"No se pudo guardar la lista: {exc}")
             return
         self._show_message(f"Lista guardada en:\n{path}")
+
+    # ---------- Categorías ----------
+    def _open_categories_dialog(self, e=None):
+        cats = cs.list_categories()
+        rows = [
+            ft.Row([
+                ft.Text(f"{c['name']} ({c['product_count']})", color=TEXT, expand=True),
+                ft.TextButton("Renombrar", style=ft.ButtonStyle(color=PRIMARY),
+                              on_click=lambda ev, cid=c['id'], cname=c['name']: self._open_rename_category_dialog(dlg, cid, cname)),
+                ft.TextButton("Eliminar", style=ft.ButtonStyle(color=ERROR),
+                              on_click=lambda ev, cid=c['id'], cname=c['name']: self._confirm_delete_category(dlg, cid, cname)),
+            ])
+            for c in cats
+        ]
+        if not rows:
+            rows = [ft.Text("No hay categorías todavía.", color=MUTED)]
+        dlg = ft.AlertDialog(
+            title=ft.Text("Categorías", color=TEXT),
+            content=ft.Column(rows, tight=True, width=420, scroll=ft.ScrollMode.AUTO),
+            bgcolor=WHITE,
+        )
+
+        def close(ev):
+            self._close_dialog(dlg)
+            self.load_data()  # filtro y selectores reflejan los cambios
+
+        dlg.actions = [ft.TextButton("Cerrar", autofocus=True, on_click=close, style=ft.ButtonStyle(color=PRIMARY))]
+        self._display_dialog(dlg)
+
+    def _open_rename_category_dialog(self, list_dlg, category_id, current_name):
+        in_name = ft.TextField(label="Nombre", value=current_name, color=TEXT, bgcolor=WHITE)
+        err_cat = ft.Text("", color=ERROR)
+        dlg = ft.AlertDialog(title=ft.Text("Renombrar categoría", color=TEXT),
+                             content=ft.Column([in_name, err_cat], tight=True, width=300), bgcolor=WHITE)
+
+        def save(e):
+            try:
+                cs.rename_category(category_id, in_name.value)
+            except ValueError as exc:
+                err_cat.value = str(exc)
+                self._page.update()
+                return
+            self._close_dialog(dlg)
+            self._close_dialog(list_dlg)
+            self._open_categories_dialog()  # lista con el nombre nuevo
+
+        dlg.actions = [
+            ft.FilledButton("Guardar", on_click=save, style=_state_style(PRIMARY, PRIMARY_TEXT)),
+            ft.TextButton("Cancelar", on_click=lambda e: self._close_dialog(dlg), style=ft.ButtonStyle(color=PRIMARY)),
+        ]
+        self._display_dialog(dlg)
+
+    def _confirm_delete_category(self, list_dlg, category_id, name):
+        def do_delete():
+            cs.delete_category(category_id)
+            self._close_dialog(list_dlg)
+            self._open_categories_dialog()
+
+        self._ask_confirm("Eliminar categoría",
+                          f'¿Eliminar "{name}"? Sus productos quedarán sin categoría (no se borra ningún producto).',
+                          do_delete)
+
