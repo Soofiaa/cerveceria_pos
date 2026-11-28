@@ -190,3 +190,65 @@ def test_config_view_bloque_inventario(temp_db, tmp_path, monkeypatch):
                 _buscar_texto(c)
     _buscar_texto(view.inv_box)
     assert texto_encontrado, "No se encontró el texto sobre actualización del teléfono en ConfigView.inv_box"
+
+    # El bloque tiene el título de sección "Ver inventario en el teléfono"
+    titulo_encontrado = False
+    def _buscar_titulo(control):
+        nonlocal titulo_encontrado
+        if titulo_encontrado:
+            return
+        if hasattr(control, 'value') and isinstance(getattr(control, 'value'), str):
+            if control.value == "VER INVENTARIO EN EL TELÉFONO":
+                titulo_encontrado = True
+        if hasattr(control, 'controls') and isinstance(getattr(control, 'controls'), list):
+            for c in control.controls:
+                _buscar_titulo(c)
+    _buscar_titulo(view.inv_box)
+    assert titulo_encontrado, "No se encontró el título 'Ver inventario en el teléfono' en ConfigView.inv_box"
+
+    # El campo del enlace lleva la nueva etiqueta
+    assert "Enlace para ver el inventario" in view.inv_url.label
+
+    # Por defecto la imagen del QR parte sin mostrar y el texto de error oculto
+    assert view.qr_img.visible is False
+    assert view.qr_no_img.visible is False
+
+
+def test_config_view_qr_no_se_muestra_sin_src(temp_db, tmp_path, monkeypatch):
+    if ConfigView is None:
+        pytest.skip("flet no disponible")
+
+    class FakePage:
+        def __init__(self):
+            self.controls = []
+            self.overlay = []
+            self.bgcolor = ""
+            self.title = ""
+            self.window = type("W", (), {"width": 1280, "height": 720})()
+            self.updates = 0
+
+        def add(self, *c):
+            self.controls.extend(c)
+
+        def update(self):
+            self.updates += 1
+
+    monkeypatch.setattr(core_config, "CONFIG_PATH", str(tmp_path / "config.json"))
+    core_config.save_config(dict(core_config.DEFAULT_CONFIG))
+
+    page = FakePage()
+    colors = {"text": "#000000", "secondary": "#666666", "primary": "#6c3483",
+              "primary_text": "#ffffff", "danger": "#c0392b", "surface": "#ffffff"}
+
+    view = ConfigView(page, colors, lambda n: None, lambda c: None)
+
+    # Forzar fallo en la generación del QR
+    monkeypatch.setattr("flet_app.config_view._qr_svg", lambda texto: (_ for _ in ()).throw(Exception("no qr")))
+
+    view._armar_inv_url()
+
+    # Ninguna imagen queda con src vacío visible; el texto de error se muestra
+    assert view.qr_img.src == ""
+    assert view.qr_img.visible is False
+    assert view.qr_no_img.visible is True
+    assert "No se pudo generar el código QR." in view.qr_no_img.value

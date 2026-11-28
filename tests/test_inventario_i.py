@@ -57,6 +57,30 @@ def test_productos_view_ver_en_telefono():
     _buscar_textos(content)
     assert any("Cómo funciona: el teléfono muestra el inventario de la Caja 1." in t for t in how_texts), "El diálogo del producto no contiene el párrafo Cómo funciona"
 
+
+def test_productos_view_qr_fallo_muestra_texto(monkeypatch):
+    page = FakePage()
+    view = ProductosView(page)
+
+    # Forzar fallo en la generación del QR
+    monkeypatch.setattr("flet_app.productos_view._qr_svg", lambda texto: (_ for _ in ()).throw(Exception("no qr")))
+
+    view._open_telefono_dialog()
+    assert len(page.overlay) == 1
+    dlg = page.overlay[0]
+    assert isinstance(dlg, ft.AlertDialog)
+    assert dlg.open is True
+
+    content = dlg.content
+    assert isinstance(content, ft.Column)
+
+    first = content.controls[0]
+    assert isinstance(first, ft.Text)
+    assert "No se pudo generar el código QR." in first.value
+
+    # Ninguna imagen queda con src vacío
+    assert not any(isinstance(c, ft.Image) and c.src == "" for c in content.controls)
+
 def test_inventario_html_markers():
     assert "Tip: agrega esta página" in INVENTARIO_HTML
     assert "btn-todo" in INVENTARIO_HTML
