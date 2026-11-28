@@ -10,6 +10,7 @@ def create_product(
     barcode: Optional[str] = None,
     stock: int = 0,
     min_stock: int = 0,
+    category_id: Optional[int] = None,
 ) -> int:
     if not name or sale_price is None:
         raise ValueError("Nombre y precio de venta son obligatorios.")
@@ -22,9 +23,9 @@ def create_product(
         cur = con.cursor()
         try:
             cur.execute("""
-                INSERT INTO products (name, sale_price, purchase_price, barcode, stock, min_stock)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (name.strip(), int(sale_price), int(purchase_price), barcode, int(stock), int(min_stock)))
+                INSERT INTO products (name, sale_price, purchase_price, barcode, stock, min_stock, category_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (name.strip(), int(sale_price), int(purchase_price), barcode, int(stock), int(min_stock), category_id))
             con.commit()
             return cur.lastrowid
         except sqlite3.IntegrityError:
@@ -35,7 +36,7 @@ def update_product(product_id: int, **fields) -> int:
     if not fields:
         return 0
 
-    allowed = {"name", "sale_price", "purchase_price", "barcode", "stock", "min_stock"}
+    allowed = {"name", "sale_price", "purchase_price", "barcode", "stock", "min_stock", "category_id"}
     sets, values = [], []
 
     for k, v in fields.items():
@@ -66,8 +67,10 @@ def get_product(product_id: int) -> Optional[Dict[str, Any]]:
     with get_conn() as con:
         cur = con.cursor()
         cur.execute("""
-            SELECT id, name, sale_price, purchase_price, barcode, stock, min_stock, is_active
-            FROM products WHERE id=?
+            SELECT p.id, p.name, p.sale_price, p.purchase_price, p.barcode, p.stock, p.min_stock, p.is_active, p.category_id, c.name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.id=?
         """, (product_id,))
         r = cur.fetchone()
         if not r:
@@ -81,6 +84,8 @@ def get_product(product_id: int) -> Optional[Dict[str, Any]]:
             "stock": r[5],
             "min_stock": r[6],
             "is_active": r[7],
+            "category_id": r[8],
+            "category_name": r[9],
         }
 
 
@@ -99,19 +104,20 @@ def list_products(q: str = "", incluir_inactivos: bool = False) -> List[Dict[str
         params: list = []
 
         if not incluir_inactivos:
-            where_clauses.append("is_active=1")
+            where_clauses.append("p.is_active=1")
 
         if q:
-            where_clauses.append("(name LIKE '%'||?||'%' OR IFNULL(barcode,'') LIKE '%'||?||'%')")
+            where_clauses.append("(p.name LIKE '%'||?||'%' OR IFNULL(p.barcode,'') LIKE '%'||?||'%')")
             params.extend([q, q])
 
         where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
         cur.execute(f"""
-            SELECT id, name, sale_price, purchase_price, barcode, stock, min_stock, is_active
-            FROM products
+            SELECT p.id, p.name, p.sale_price, p.purchase_price, p.barcode, p.stock, p.min_stock, p.is_active, p.category_id, c.name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
             {where_sql}
-            ORDER BY name
+            ORDER BY p.name
         """, params)
         rows = cur.fetchall()
         return [
@@ -124,6 +130,8 @@ def list_products(q: str = "", incluir_inactivos: bool = False) -> List[Dict[str
                 "stock": r[5],
                 "min_stock": r[6],
                 "is_active": r[7],
+                "category_id": r[8],
+                "category_name": r[9],
             }
             for r in rows
         ]
