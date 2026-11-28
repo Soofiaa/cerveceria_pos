@@ -300,9 +300,11 @@ def test_boton_reactivar_vuelve_a_activar(temp_db):
 def test_boton_guardar_lista_es_async(temp_db):
     page = FakePage()
     view = ProductosView(page)
-    guardar = view.controls[1].controls[2]
-    assert guardar.content == "Guardar lista..."
-    assert inspect.iscoroutinefunction(guardar.on_click)
+    # El orden de la barra es: Agregar producto, Categorías, Ver en el teléfono, Guardar lista...
+    row = view.controls[1]
+    guardar = [c for c in row.controls if isinstance(c, ft.TextButton) and str(c.content) == "Guardar lista..."]
+    assert len(guardar) == 1
+    assert inspect.iscoroutinefunction(guardar[0].on_click)
 
 
 def test_export_saves_to_chosen_path(temp_db, monkeypatch):
