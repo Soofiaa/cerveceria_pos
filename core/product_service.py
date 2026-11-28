@@ -189,6 +189,45 @@ def list_low_stock_products() -> List[Dict[str, Any]]:
         ]
 
 
+def shopping_list() -> List[Dict[str, Any]]:
+    """
+    Lista de compras para reabastecer productos con stock crítico (bajo o igual a alerta mínima).
+    Retorna productos ordenados primero por agotados (menor stock primero), luego por mayor déficit.
+    """
+    with get_conn() as con:
+        cur = con.cursor()
+        cur.execute("""
+            SELECT name, stock, min_stock
+            FROM products
+            WHERE stock <= min_stock AND name != 'Producto común' AND is_active=1
+        """)
+        rows = cur.fetchall()
+
+    items = []
+    for r in rows:
+        name, stock, min_stock = r[0], r[1], r[2]
+        agotado = stock <= 0
+        sugerido = (2 * min_stock - stock) if min_stock > 0 else None
+        items.append({
+            "name": name,
+            "stock": stock,
+            "min_stock": min_stock,
+            "agotado": agotado,
+            "sugerido": sugerido,
+        })
+
+    def sort_key(x):
+        group_index = 0 if x['agotado'] else 1
+        if x['agotado']:
+            primary_order_value = x['stock']
+        else:
+            primary_order_value = -(x['min_stock'] - x['stock'])
+        return (group_index, primary_order_value, x['name'])
+
+    items.sort(key=sort_key)
+    return items
+
+
 
 def delete_product(product_id: int):
     """

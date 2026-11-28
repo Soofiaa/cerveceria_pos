@@ -19,8 +19,10 @@ from datetime import date, datetime
 
 import flet as ft
 
+from core import config as core_config
 from flet_app.api_client import ApiError, SinConexion
 from flet_app.backend import LocalBackend
+from flet_app.lista_compras_pdf import build_lista_compras_pdf
 
 
 def _fmt_money(value):
@@ -114,6 +116,9 @@ class ReportesView(ft.Column):
         )
 
         self.btn_ver = ft.FilledButton("Ver", on_click=lambda e: self.load_data())
+        self.btn_pdf = ft.TextButton("Exportar PDF...", on_click=self._export_pdf, style=ft.ButtonStyle(color=self.colors["primary"]))
+        self.lista_compras_container = ft.Column(spacing=10, expand=True)
+
         self.cards = ft.Row(
             [
                 self._card("Total vendido", self.txt_total),
@@ -151,6 +156,9 @@ class ReportesView(ft.Column):
                 expand=True,
                 vertical_alignment=ft.CrossAxisAlignment.START,
             ),
+            ft.Divider(),
+            ft.Row([ft.Text("Lista de compras", size=20, weight=ft.FontWeight.BOLD), self.btn_pdf], spacing=10),
+            ft.Column([self.lista_compras_container], scroll=ft.ScrollMode.AUTO, expand=True),
         ]
         self.apply_colors(colors)
 
@@ -250,6 +258,44 @@ class ReportesView(ft.Column):
             ])
             for p in top
         ]
+
+        # Lista de compras
+        self.lista_compras_container.controls = []
+        if getattr(self.backend, "is_remote", False):
+            self.lista_compras_container.controls = [ft.Text("La lista de compras se genera en la Caja 1.")]
+            self.btn_pdf.visible = False
+        else:
+            self.btn_pdf.visible = True
+            items = self.backend.shopping_list()
+            if not items:
+                self.lista_compras_container.controls = [ft.Text("Nada falta por ahora.")]
+            else:
+                for item in items:
+                    agotado = item['agotado']
+                    s = item['sugerido']
+                    s_txt = f"Comprar {s}" if s is not None else "Comprar: a criterio"
+                    card = ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Column([
+                                    ft.Text(item['name'], weight=ft.FontWeight.BOLD, size=16),
+                                    ft.Text(f"Quedan {item['stock']} · {s_txt}", size=13),
+                                ], expand=True),
+                                ft.Container(
+                                    content=ft.Text("AGOTADO" if agotado else "QUEDA POCO", weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, size=12),
+                                    padding=5,
+                                    bgcolor=self.colors["danger"] if agotado else "#b97d0a",
+                                    border_radius=5
+                                )
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                        ),
+                        padding=10,
+                        border=ft.Border.all(1, self.colors["accent"]),
+                        border_radius=10
+                    )
+                    self.lista_compras_container.controls.append(card)
+
         self._page.update()
 
     # ---------- Exportar CSV (mismo patron que Productos) ----------
@@ -290,6 +336,40 @@ class ReportesView(ft.Column):
             self._show_message(f"No se pudo guardar el reporte: {exc}")
             return
         self._show_message(f"Reporte guardado en:\n{path}")
+
+    # ---------- Exportar PDF (Lista de compras) ----------
+    async def _export_pdf(self, e=None):
+        try:
+            path = await self.picker.save_file(
+                dialog_title="Exportar lista de compras",
+                file_name="lista-de-compras.pdf",
+                file_type=ft.FilePickerFileType.CUSTOM,
+                allowed_extensions=["pdf"],
+            )
+        except Exception as exc:
+            self._show_message(f"No se pudo abrir el diálogo para guardar: {exc}")
+            return
+        if not path:
+            return
+        self._save_pdf_to(path)
+
+    def _save_pdf_to(self, path):
+        try:
+            items = self.backend.shopping_list()
+        except Exception as exc:
+            self._show_message(f"No se pudo obtener la lista de compras: {exc}")
+            return
+
+        cfg = core_config.load_config()
+        business_name = cfg.get("business_name", "")
+        generado_el = datetime.now().strftime("%d-%m-%Y %H:%M")
+
+        try:
+            build_lista_compras_pdf(items, business_name, generado_el, path)
+        except Exception as exc:
+            self._show_message(f"No se pudo generar el PDF: {exc}")
+            return
+        self._show_message(f"Lista de compras guardada en:\n{path}")
 
     # ---------- Avisos (page.overlay, se quitan en on_dismiss) ----------
     def _show_message(self, text):

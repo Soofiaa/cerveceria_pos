@@ -201,6 +201,8 @@ def test_reportes_view_renders_data():
             return [{"id": 1, "created_at": "2026-11-25 10:00:00", "total": 5000}]
         def report_top_products(self, d1, d2, limit=10):
             return [{"name": "IPA", "qty": 2, "revenue": 5000}]
+        def shopping_list(self):
+            return []
 
     page = FakePage()
     view = ReportesView(page, get_theme("lila"), backend=FakeBackend())

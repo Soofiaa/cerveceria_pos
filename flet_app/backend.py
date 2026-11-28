@@ -32,6 +32,7 @@ class LocalBackend:
     list_products = staticmethod(ps.list_products)
     find_product_by_exact_code_or_name = staticmethod(ps.find_product_by_exact_code_or_name)
     get_product = staticmethod(ps.get_product)
+    shopping_list = staticmethod(ps.shopping_list)
 
     # tickets y lineas
     list_open_tickets = staticmethod(ts.list_open_tickets)
