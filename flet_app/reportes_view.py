@@ -272,14 +272,15 @@ class ReportesView(ft.Column):
             else:
                 for item in items:
                     agotado = item['agotado']
-                    s = item['sugerido']
-                    s_txt = f"Comprar {s}" if s is not None else "Comprar: a criterio"
                     card = ft.Container(
                         content=ft.Row(
                             [
                                 ft.Column([
                                     ft.Text(item['name'], weight=ft.FontWeight.BOLD, size=16),
-                                    ft.Text(f"Quedan {item['stock']} · {s_txt}", size=13),
+                                    ft.Text(spans=[
+                                        ft.TextSpan(f"Quedan {item['stock']}", style=ft.TextStyle(weight=ft.FontWeight.BOLD, color=self.colors["danger"])),
+                                        ft.TextSpan(" · Comprar")
+                                    ], size=13),
                                 ], expand=True),
                                 ft.Container(
                                     content=ft.Text("AGOTADO" if agotado else "QUEDA POCO", weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, size=12),

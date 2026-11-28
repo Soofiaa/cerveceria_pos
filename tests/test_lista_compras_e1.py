@@ -145,7 +145,19 @@ def test_reportes_view_lista_compras(temp_db):
                     found_agotado = True
                     assert row.controls[1].content.value == "AGOTADO"
                 if "Bajo" in name_txt:
-                    assert details_txt == "Quedan 2 · Comprar 10"
+                    txt_ctrl = col.controls[1]
+                    # Afirmar los spans
+                    assert len(txt_ctrl.spans) == 2
+                    span0 = txt_ctrl.spans[0]
+                    span1 = txt_ctrl.spans[1]
+                    assert span0.text == "Quedan 2"
+                    assert span0.style.weight == ft.FontWeight.BOLD
+                    assert span0.style.color == colors["danger"]
+                    assert span1.text == " · Comprar"
+                    # Afirmar que no contiene cantidad sugerida ni "Comprar 10"
+                    full_text = (span0.text or "") + (span1.text or "")
+                    assert "Comprar 10" not in full_text
+                    assert "10" not in full_text
                     found_bajo_text = True
     assert found_agotado
     assert found_bajo_text

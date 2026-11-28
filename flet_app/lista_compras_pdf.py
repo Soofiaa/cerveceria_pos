@@ -30,21 +30,28 @@ def build_lista_compras_pdf(items, business_name, generado_el, path):
 
     # Lista
     for item in items:
-        # Una linea por producto: Nombre (bold) - quedan X - comprar Y - MARCA
+        # Una linea por producto: Nombre (bold) - quedan {stock} (bold red) -  — comprar (normal) - MARCA
         name = _s(item['name'])
         q = item['stock']
-        s = item['sugerido']
-        txt_sugerido = f"comprar {s}" if s is not None else "comprar: a criterio"
         marca = "AGOTADO" if item['agotado'] else "QUEDA POCO"
         
+        # 1. Nombre
         pdf.set_font("Helvetica", "B", 13)
         pdf.cell(pdf.get_string_width(name) + 2, 8, name)
         
-        pdf.set_font("Helvetica", "", 11)
-        detalles = f" - quedan {q} - {txt_sugerido} - "
-        pdf.cell(pdf.get_string_width(_s(detalles)), 8, _s(detalles))
+        # 2. quedan {stock} (Bold Red)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(200, 0, 0)
+        q_txt = f"quedan {q}"
+        pdf.cell(pdf.get_string_width(_s(q_txt)) + 2, 8, _s(q_txt))
         
-        # Color segun estado
+        # 3. — comprar (Normal Black)
+        pdf.set_font("Helvetica", "", 11)
+        pdf.set_text_color(0, 0, 0)
+        compra_txt = " — comprar "
+        pdf.cell(pdf.get_string_width(_s(compra_txt)), 8, _s(compra_txt))
+        
+        # 4. Marca
         if item['agotado']:
             pdf.set_text_color(200, 0, 0)
         else:
