@@ -12,6 +12,9 @@ boletas y correo SMTP opcional, con la misma persistencia de flet_app.boletas).
 Flet 1.1.2: Dropdown usa on_select (no on_change).
 """
 
+import base64
+import socket
+
 import flet as ft
 
 from core import config as core_config
@@ -34,6 +37,30 @@ MODE_LABELS = {
     "server": "Caja 1 (principal, comparte su base)",
     "client": "Caja adicional (se conecta a la Caja 1)",
 }
+
+INVENTARIO_PUERTO = 8780
+
+
+def _ip_local():
+    """IP local de esta maquina sin enviar trafico (truco del socket UDP)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
+
+def _qr_svg(texto):
+    """Codigo QR en SVG (texto). Requiere qrcode>=7."""
+    import qrcode
+    import qrcode.image.svg
+    factory = qrcode.image.svg.SvgPathImage
+    img = qrcode.make(texto, image_factory=factory, box_size=10, border=4)
+    return img.to_string(encoding="unicode")
 
 
 def _caps(text, colors):
@@ -187,6 +214,40 @@ class ConfigView(ft.Column):
                      size=12, color=colors["secondary"])],
             tight=True,
         )
+
+        # ---------- Inventario en el telefono (solo modo servidor) ----------
+        self._inventory_key_completo = str(multicaja.ensure_inventory_key() or "")
+        self.txt_inv_key = ft.TextField(
+            label="Clave de inventario del telefono",
+            value=self._mascarar_token(self._inventory_key_completo),
+            read_only=True, width=340, color=colors["text"],
+            hint_text="Se genera al iniciar la Caja 1",
+        )
+        self.btn_copy_inv_key = ft.IconButton(
+            ft.Icons.CONTENT_COPY, tooltip="Copiar la clave", on_click=self._copy_inv_key,
+        )
+        self.inv_url = ft.TextField(
+            label="Enlace para el telefono (copialo o escanea el QR)",
+            value="", read_only=True, width=520, color=colors["text"],
+        )
+        self.btn_regenerar_inv = ft.TextButton(
+            "Regenerar clave",
+            on_click=self._ask_regenerar_inv_key,
+            style=ft.ButtonStyle(color=colors["danger"]),
+        )
+        self.qr_img = ft.Image(src="", width=220, height=220)
+        self.inv_box = ft.Column(
+            [
+                ft.Row([self.txt_inv_key, self.btn_copy_inv_key], spacing=4),
+                self.inv_url,
+                ft.Row([self.btn_regenerar_inv, self.qr_img], spacing=16, vertical_alignment=ft.CrossAxisAlignment.START),
+                ft.Text("Solo lectura: el telefono solo puede ver el inventario. "
+                        "Al regenerar la clave, los telefonos con el enlace anterior dejan de funcionar.",
+                        size=12, color=colors["secondary"]),
+            ],
+            tight=True,
+            visible=self.dd_caja_mode.value == "server",
+        )
         self._sync_caja_visibility()
 
         self.msg = ft.Text("", color=colors["secondary"])
@@ -217,6 +278,7 @@ class ConfigView(ft.Column):
             ft.Row([self.in_caja_name, self.in_caja_number], spacing=12),
             self.caja_server_box,
             self.caja_token_box,
+            self.inv_box,
             ft.Divider(),
             _caps("Impresora y correo", colors),
             ft.Text(
@@ -275,6 +337,8 @@ class ConfigView(ft.Column):
         self.caja_server_box.visible = self.dd_caja_mode.value == "client"
         # La clave generada solo se muestra en la Caja 1 (la que sirve la API).
         self.caja_token_box.visible = self.dd_caja_mode.value == "server"
+        # El bloque de inventario solo se muestra en la Caja 1 (servidor).
+        self.inv_box.visible = self.dd_caja_mode.value == "server"
         if e is not None:
             self._page.update()
 
@@ -289,6 +353,62 @@ class ConfigView(ft.Column):
         self.msg.value = "Clave copiada."
         self.msg.color = self.colors["primary"]
         self._page.update()
+
+    async def _copy_inv_key(self, e=None):
+        key = self._inventory_key_completo or ""
+        if not key:
+            self.msg.value = "Aún no hay clave de inventario: se genera al iniciar la Caja 1."
+            self.msg.color = self.colors["danger"]
+            self._page.update()
+            return
+        await self.clipboard.set(key)
+        self.msg.value = "Clave de inventario copiada."
+        self.msg.color = self.colors["primary"]
+        self._page.update()
+
+    async def _ask_regenerar_inv_key(self, e=None):
+        dlg = ft.AlertDialog(
+            title=ft.Text("Regenerar clave de inventario", color=self.colors["text"]),
+            content=ft.Text("Los telefonos con el enlace anterior dejaran de funcionar. ¿Continuar?",
+                            color=self.colors["text"]),
+            bgcolor=self.colors["surface"],
+        )
+
+        def yes(e2):
+            dlg.open = False
+            self._page.update()
+            self._regenerar_inv_key()
+
+        def no(e2):
+            dlg.open = False
+            self._page.update()
+
+        dlg.actions = [
+            ft.FilledButton("Regenerar", on_click=yes,
+                            style=ft.ButtonStyle(bgcolor=self.colors["danger"], color=self.colors["primary_text"])),
+            ft.TextButton("Cancelar", on_click=no, style=ft.ButtonStyle(color=self.colors["primary"])),
+        ]
+        self._open_message(dlg)
+
+    def _regenerar_inv_key(self):
+        key = multicaja.ensure_inventory_key(regenerate=True)
+        self._inventory_key_completo = str(key or "")
+        self.txt_inv_key.value = self._mascarar_token(self._inventory_key_completo)
+        self._armar_inv_url()
+        self._page.update()
+        self.msg.value = "Clave de inventario regenerada."
+        self.msg.color = self.colors["primary"]
+        self._page.update()
+
+    def _armar_inv_url(self):
+        clave = self._inventory_key_completo or ""
+        ip = _ip_local()
+        url = f"http://{ip}:{INVENTARIO_PUERTO}/inventario?clave={clave}"
+        self.inv_url.value = url
+        try:
+            self.qr_img.src = "data:image/svg+xml;base64," + base64.b64encode(_qr_svg(url).encode("utf-8")).decode("ascii")
+        except Exception:
+            self.qr_img.src = ""
 
     # ---------- Impresora / correo ----------
     def _sync_printer_visibility(self, e=None):
@@ -402,6 +522,7 @@ class ConfigView(ft.Column):
         self.chk_email.value = data.get("chk_email", self.chk_email.value)
         self._sync_printer_visibility()
         self._sync_caja_visibility()
+        self._armar_inv_url()
 
     # ---------- Repintado al cambiar de tema ----------
     def apply_colors(self, colors):
