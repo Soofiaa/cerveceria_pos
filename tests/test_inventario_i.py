@@ -1,6 +1,6 @@
 import pytest
 import flet as ft
-from flet_app.reportes_view import ReportesView
+from flet_app.productos_view import ProductosView
 from flet_app.inventario_page import INVENTARIO_HTML
 
 class FakePage:
@@ -9,40 +9,38 @@ class FakePage:
     def update(self):
         pass
 
-class FakeBackendLocal:
-    is_remote = False
-    def report_summary(self, d1, d2): return {"total": 0, "tickets": 0, "avg_ticket": 0, "profit": 0}
-    def report_sales(self, d1, d2): return []
-    def report_top_products(self, d1, d2): return []
-    def shopping_list(self): return []
+def _productos_view(page):
+    return ProductosView(page)
 
-def test_reportes_view_ver_en_telefono():
+def _reportes_view(page):
+    from flet_app.reportes_view import ReportesView
+    return ReportesView(page, {
+        "text": "#000", "secondary": "#000", "primary": "#000",
+        "accent": "#000", "surface": "#000", "danger": "#000", "primary_text": "#fff",
+    })
+
+def test_productos_view_ver_en_telefono():
     page = FakePage()
-    colors = {
-        "text": "#000", "secondary": "#666", "primary": "#6c3483",
-        "accent": "#ccc", "surface": "#fff", "danger": "#c0392b", "primary_text": "#fff"
-    }
-    view = ReportesView(page, colors, backend=FakeBackendLocal())
-    view.load_data()
+    view = _productos_view(page)
 
-    # Verificar que el botón "Ver en el teléfono" existe y está visible en modo local
-    assert view.btn_ver_telefono.visible is True
-    # TextButton content can be ft.Text or string depending on Flet version
-    content_val = view.btn_ver_telefono.content
-    if isinstance(content_val, ft.Text):
-        assert content_val.value == "Ver en el teléfono"
-    else:
-        assert str(content_val) == "Ver en el teléfono"
+    btns = [
+        btn for row in view.controls if isinstance(row, ft.Row)
+        for btn in row.controls
+        if isinstance(btn, ft.TextButton) and str(btn.content) == "Ver en el teléfono"
+    ]
+    assert len(btns) == 1, "El botón 'Ver en el teléfono' no aparece en ProductosView"
 
-    # Simular clic en el botón para abrir el diálogo
+    # El botón NO debe estar en ReportesView (se movió a Productos)
+    rv = _reportes_view(page)
+    assert not hasattr(rv, "btn_ver_telefono")
+
+    # Dialogo del QR al hacer clic
     view._open_telefono_dialog()
-    
     assert len(page.overlay) == 1
     dlg = page.overlay[0]
     assert isinstance(dlg, ft.AlertDialog)
     assert dlg.open is True
 
-    # Verificar contenido del diálogo (imagen QR y campo URL)
     content = dlg.content
     assert isinstance(content, ft.Column)
     qr_img = content.controls[0]

@@ -17,12 +17,16 @@ Reglas:
   desactivar.
 """
 
+import base64
 import flet as ft
 
+import base64
 from core import product_backup_service as pbs
 from core import product_service as ps
 from core import category_service as cs
 from core.utils_format import fmt_money as _fmt_money
+from flet_app import multicaja
+from flet_app.config_view import _ip_local, _qr_svg, INVENTARIO_PUERTO
 
 TEXT = "#1c2833"
 PRIMARY = "#6c3483"
@@ -162,6 +166,11 @@ class ProductosView(ft.Column):
                     ft.TextButton(
                         "Categorías",
                         on_click=self._open_categories_dialog,
+                        style=ft.ButtonStyle(color=PRIMARY),
+                    ),
+                    ft.TextButton(
+                        "Ver en el teléfono",
+                        on_click=self._open_telefono_dialog,
                         style=ft.ButtonStyle(color=PRIMARY),
                     ),
                     ft.TextButton(
@@ -616,6 +625,44 @@ class ProductosView(ft.Column):
             self._show_message(f"No se pudo guardar la lista: {exc}")
             return
         self._show_message(f"Lista guardada en:\n{path}")
+
+    # ---------- Telefono (QR) ----------
+    def _open_telefono_dialog(self, e=None):
+        inv_key = multicaja.ensure_inventory_key()
+        ip = _ip_local()
+        url = f"http://{ip}:{INVENTARIO_PUERTO}/inventario?clave={inv_key}"
+        
+        try:
+            qr_src = "data:image/svg+xml;base64," + base64.b64encode(_qr_svg(url).encode("utf-8")).decode("ascii")
+        except Exception:
+            qr_src = ""
+
+        qr_image = ft.Image(src=qr_src, width=220, height=220)
+        url_field = ft.TextField(value=url, read_only=True, width=380, color=TEXT)
+        tip_text = ft.Text("En el teléfono, agrega la página a la pantalla de inicio para abrirla después con un toque.", size=13, color=TEXT)
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("Inventario en el teléfono", color=TEXT),
+            content=ft.Column([qr_image, url_field, tip_text], tight=True, spacing=10),
+            bgcolor=WHITE,
+        )
+
+        def close(e2):
+            dlg.open = False
+            self._page.update()
+
+        dlg.actions = [ft.TextButton("Aceptar", autofocus=True, on_click=close,
+                                     style=ft.ButtonStyle(color=PRIMARY))]
+
+        async def on_dismiss(e2):
+            if dlg in self._page.overlay:
+                self._page.overlay.remove(dlg)
+            self._page.update()
+
+        dlg.on_dismiss = on_dismiss
+        self._page.overlay.append(dlg)
+        dlg.open = True
+        self._page.update()
 
     # ---------- Categorías ----------
     def _open_categories_dialog(self, e=None):
